@@ -27,9 +27,9 @@ type AuctionServiceServer struct {
 	pb.UnimplementedAuctionServiceServer
 }
 
-var peers []pb.AuctionServiceClient = make([]pb.AuctionServiceClient, 0)
-var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]chan BidInfo, 0)}
-var hb *HighestBid = &HighestBid{currentHighestBid: 0, user: ""}
+//var peers []pb.AuctionServiceClient = make([]pb.AuctionServiceClient, 0)
+var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]*BidInfo, 0)}
+var hb *HighestBid = &HighestBid{bidInfo: &BidInfo{Amount: 69, User: "SELLER"}}
 
 func main() {
 
@@ -109,24 +109,26 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Re
 	AddClient(Bid.User)
 	success := SetBid(Bid.Amount, Bid.User)
 	if !success {
-		return &pb.Response{Ack: "nono"}, nil
+		return &pb.Response{Ack: "You must make a minimal bid higher than $" + strconv.FormatInt(int64(GetHighestBid().Amount), 10)}, nil
 	}
 
-	for _, peer := range peers {
+	/*for _, peer := range peers {
 		peer.UpdateHighestBid(ctx, Bid)
-	}
+	}*/
 
 	log.Printf("%s made a bid of $%d", Bid.User, Bid.Amount)
-	BroadcastBid(NewBidInfo(Bid.Amount, Bid.User))
+	BroadcastBid(&BidInfo{Bid.Amount, Bid.User})
 
-	return &pb.Response{Ack: "yaya"}, nil
+	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(GetHighestBid().Amount), 10)}, nil
 }
 
 func (s *AuctionServiceServer) GetCurrentInfo(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
-	log.Println("tries to listen")
-	c := GetChannel(Request.User)
-	bidInfo := <-c
-	return &pb.Bid{Amount: bidInfo.Amount, User: bidInfo.User}, nil
+	for {
+		bidInfo := GetBidInfo(Request.User)
+		if bidInfo != nil {
+			return &pb.Bid{Amount: bidInfo.Amount, User: bidInfo.User}, nil
+		}
+	}
 }
 
 func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*pb.Bid, error) {
@@ -134,21 +136,20 @@ func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*p
 }
 
 func (s *AuctionServiceServer) UpdateHighestBid(ctx context.Context, Bid *pb.Bid) (*pb.Response, error) {
-	hb = &HighestBid{currentHighestBid: Bid.Amount, user: Bid.User}
+	hb = &HighestBid{bidInfo: &BidInfo{Amount: Bid.Amount, User: Bid.User}}
 	return &pb.Response{Ack: "yaya"}, nil
 }
 
-func BroadcastBid(bidInfo BidInfo) {
+func BroadcastBid(bidInfo *BidInfo) {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	for _, c := range ch.connectedClients {
-		go Send(bidInfo, c)
+	for s, _ := range ch.connectedClients {
+		if s == bidInfo.User {
+			continue
+		}
+		ch.connectedClients[s] = bidInfo
 	}
-}
-
-func Send(bidInfo BidInfo, c chan BidInfo) {
-	c <- bidInfo
 }
 
 type BidInfo struct {
@@ -156,55 +157,67 @@ type BidInfo struct {
 	User   string
 }
 
-func NewBidInfo(amount int32, user string) BidInfo {
-	return BidInfo{Amount: amount, User: user}
-}
-
 type ConnectionHolder struct {
-	connectedClients map[string](chan BidInfo)
+	connectedClients map[string]*BidInfo
 	mu               sync.Mutex
 }
 
-func AddClient(User string) bool {
+func AddClient(user string) bool {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	if ch.connectedClients[User] == nil {
-		ch.connectedClients[User] = make(chan BidInfo, 0)
+	if ch.connectedClients[user] == nil {
+		bidInfo := GetHighestBid()
+		ch.connectedClients[user] = &BidInfo{Amount: bidInfo.Amount, User: bidInfo.User}
 		return true
 	}
 
 	return false
 }
-func GetChannel(User string) chan BidInfo {
+func GetBidInfo(user string) *BidInfo {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	return ch.connectedClients[User]
+	bidInfo := ch.connectedClients[user]
+	ch.connectedClients[user] = nil
+	return bidInfo
 }
 
 type HighestBid struct {
-	currentHighestBid int32
-	user              string
-	mu                sync.Mutex
+	bidInfo *BidInfo
+	mu      sync.Mutex
 }
 
 func SetBid(Amount int32, User string) bool {
 	hb.mu.Lock()
 	defer hb.mu.Unlock()
 
-	if hb.currentHighestBid > Amount {
+	if hb.bidInfo.Amount > Amount {
 		return false
 	}
 
-	hb.currentHighestBid = Amount
-	hb.user = User
+	hb.bidInfo = &BidInfo{Amount: Amount, User: User}
 
 	return true
 }
-func GetBid() (int32, string) {
+func GetHighestBid() *BidInfo {
 	hb.mu.Lock()
 	defer hb.mu.Unlock()
 
-	return hb.currentHighestBid, hb.user
+	return hb.bidInfo
 }
+
+
+/*var timer Timeout
+type Timeout struct {
+	time string
+	mu sync.Mutex
+}
+func startTime() {
+	for range time.Tick(time.Second) {
+		timer.mu.Lock()
+		do
+		timer.mu.Unlock()
+	}
+}*/
+

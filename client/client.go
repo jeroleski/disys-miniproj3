@@ -62,7 +62,8 @@ func main() {
 	fmt.Scan(&user)
 	log.Printf("User %s has connected to the auction\n", user)
 
-	go Listen()
+	go ListenForTime()
+	go ListenForBids()
 	ReadBids()
 	//Result()
 }
@@ -114,9 +115,9 @@ func ReadBids() {
 	}
 }
 
-func Listen() {
+func ListenForBids() {
 	for {
-		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: ""})
+		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
 		if err != nil {
 			log.Print("Could not get Info\n", err)
 			log.Print("A wild Wormbat appeard\n")
@@ -124,7 +125,7 @@ func Listen() {
 
 		}
 
-		log.Printf("'%s' has bid $%d on the item!\n", currentHighestBid.User, currentHighestBid.Amount)
+		log.Printf("%s has bid $%d on \"SULFURAS, HAND OF RAGNAROS\"!\n", currentHighestBid.User, currentHighestBid.Amount)
 	}
 }
 
