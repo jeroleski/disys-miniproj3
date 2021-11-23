@@ -15,14 +15,12 @@ import (
 	"strings"
 )
 
-const (
-	serverAddr = "localhost:8080"
-)
-
 var client pb.AuctionServiceClient
 var ctx context.Context
 
 var user string
+
+var serverId int32 = 0
 
 func main() {
 	//Sets up logs
@@ -41,7 +39,7 @@ func main() {
 	}(logFile)
 
 	//log.SetOutput(logFile)
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	conn, err := grpc.Dial(Port(serverId), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -108,7 +106,7 @@ func Listen() {
 	}
 }
 
-func Port(NodeId int32) string {
+func Port(ServerId int32) string {
 	file, err := os.Open("ServerPorts.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -117,8 +115,8 @@ func Port(NodeId int32) string {
 	var Port0 string
 	for scanner.Scan() {
 		IdPort := strings.Split(scanner.Text(), " ")
-		Id, _ := (strconv.ParseInt(IdPort[0], 10, 64))
-		if int32(Id) == NodeId {
+		Id, _ := strconv.ParseInt(IdPort[0], 10, 64)
+		if int32(Id) == ServerId {
 			Port0 = IdPort[1]
 		}
 	}
