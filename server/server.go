@@ -33,8 +33,8 @@ type AuctionServiceServer struct {
 }
 
 var peers []pb.AuctionServiceClient = make([]pb.AuctionServiceClient, 0)
-var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]chan int, 0)}
-var hb *HighestBid = &HighestBid{currentHighestBid: 0, user: ""}
+var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]chan int32, 0)}
+var hb *HighestBid = &HighestBid{currentHighestBid: 0, User: ""}
 
 func main() {
 	//Server listens on the server port and handles error.
@@ -100,90 +100,90 @@ func Port(NodeId int64) string {
 
 }
 
-func (s *AuctionServiceServer) MakeBid(ctx context.Context, bid *pb.bid) (*pb.response, error) {
-	AddClient(bid.user)
-	succes := SetBid(bid.amount, bid.user)
+func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Response, error) {
+	AddClient(Bid.User)
+	succes := SetBid(Bid.Amount, Bid.User)
 	if !succes {
-		return &pb.response{"nono"}, nil
+		return &pb.Response{Ack: "nono"}, nil
 	}
 
 	for _, peer := range peers {
-		peer.UpdateHighestBid(ctx, bid)
+		peer.UpdateHighestBid(ctx, Bid)
 	}
 
-	BroadcastBid(bid.amount)
+	BroadcastBid(Bid.Amount)
 
-	return &pb.response{ack: "yaya"}, nil
+	return &pb.Response{Ack: "yaya"}, nil
 }
 
-func (s *AuctionServiceServer) GetHighestBid(ctx context.Context, request *pb.request) (*pb.bid, error) {
-	c := GetChannel(request.user)
+func (s *AuctionServiceServer) GetHighestBid(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
+	c := GetChannel(Request.User)
 	highestBid := <-c
-	return &pb.bid{amount: highestBid, user: nil}, nil
+	return &pb.Bid{Amount: highestBid, User: ""}, nil
 }
 
-func (s *AuctionServiceServer) Result(ctx context.Context, request *pb.void) (*pb.bid, error) {
-
+func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*pb.Bid, error) {
+	return nil, nil
 }
 
-func (s *AuctionServiceServer) UpdateHighestBid(ctx context.Context, bid *pb.bid) (*pb.response, error) {
-	hb = &HighestBid{currentHighestBid: bid.amount, user: bid.user}
-	return &pb.response{ack: "yaya"}, nil
+func (s *AuctionServiceServer) UpdateHighestBid(ctx context.Context, Bid *pb.Bid) (*pb.Response, error) {
+	hb = &HighestBid{currentHighestBid: Bid.Amount, User: Bid.User}
+	return &pb.Response{Ack: "yaya"}, nil
 }
 
-func BroadcastBid(amount int) {
+func BroadcastBid(Amount int32) {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
 	for _, c := range ch.connectedClients {
-		go Send(amount, c)
+		go Send(Amount, c)
 	}
 }
 
-func Send(amount int, c chan int) {
-	c <- amount
+func Send(Amount int32, c chan int32) {
+	c <- Amount
 }
 
 type ConnectionHolder struct {
-	connectedClients map[string](chan int)
+	connectedClients map[string](chan int32)
 	mu               sync.Mutex
 }
 
-func AddClient(user string) bool {
+func AddClient(User string) bool {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	if ch.connectedClients[user] == nil {
-		ch.connectedClients[user] = make(chan int)
+	if ch.connectedClients[User] == nil {
+		ch.connectedClients[User] = make(chan int32)
 		return true
 	}
 
 	return false
 }
 
-func GetChannel(user string) chan int {
+func GetChannel(User string) chan int32 {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	return ch.connectedClients[user]
+	return ch.connectedClients[User]
 }
 
 type HighestBid struct {
-	currentHighestBid int
-	user              string
+	currentHighestBid int32
+	User              string
 	mu                sync.Mutex
 }
 
-func SetBid(amount int, user string) bool {
+func SetBid(Amount int32, User string) bool {
 	hb.mu.Lock()
 	defer hb.mu.Unlock()
 
-	if hb.currentHighestBid > amount {
+	if hb.currentHighestBid > Amount {
 		return false
 	}
 
-	hb.currentHighestBid = amount
-	hb.user = user
+	hb.currentHighestBid = Amount
+	hb.User = User
 
 	return true
 }

@@ -46,7 +46,7 @@ func Result(){
 		}
 		if(int64(respons.Amount) > currentHighestBid){
 			
-			fmt.Printf("New bid %b\n")
+			fmt.Printf("A new bid have been placed %b")
 		}
 		
 

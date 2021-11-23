@@ -6,24 +6,24 @@ option go_package = "../auction";
 package auction;
 
 service AuctionService {
-    rpc MakeBid (bid) returns (response) {};
-    rpc GetHighestBid (request) returns (bid) {};
-    rpc Result (void) returns (bid) {};
-    rpc UpdateHighestBid (bid) returns (response) {};
+    rpc MakeBid (Bid) returns (Response) {};
+    rpc GetHighestBid (Request) returns (Bid) {};
+    rpc Result (Void) returns (Bid) {};
+    rpc UpdateHighestBid (Bid) returns (Response) {};
 }
 
-message void {
+message Void {
 }
 
-message request {
-    string user = 1;
+message Request {
+    string User = 1;
 }
 
-message bid {
-    string user = 1;
-    int32 amount = 2;
+message Bid {
+    string User = 1;
+    int32 Amount = 2;
 }
 
-message response {
-    string ack = 1;
+message Response {
+    string Ack = 1;
 }
