@@ -19,10 +19,6 @@ import (
 	"sync"
 )
 
-const (
-	port = ":8080"
-)
-
 var serverAddr string
 var serverid int64 = 0
 var currentHighestBid int64 = 0
@@ -36,8 +32,19 @@ var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]c
 var hb *HighestBid = &HighestBid{currentHighestBid: 0, user: ""}
 
 func main() {
+
+	args := os.Args[1:]
+
+	if len(args) < 1 {
+		os.Exit(1)
+	}
+	Id, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		log.Panic(err)
+	}
+
 	//Server listens on the server port and handles error.
-	lis, err1 := net.Listen("tcp", port)
+	lis, err1 := net.Listen("tcp", Port((int32(Id))))
 	if err1 != nil {
 		log.Fatalf("Failed to listen: %v", err1)
 	}
@@ -80,7 +87,7 @@ func main() {
 	return &client
 } */
 
-func Port(NodeId int64) string {
+func Port(ServerId int32) string {
 	file, err := os.Open("ServerPorts.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -90,7 +97,7 @@ func Port(NodeId int64) string {
 	for scanner.Scan() {
 		IdPort := strings.Split(scanner.Text(), " ")
 		Id, _ := strconv.ParseInt(IdPort[0], 10, 64)
-		if Id == NodeId {
+		if int32(Id) == ServerId {
 			Port0 = IdPort[1]
 		}
 	}
