@@ -26,19 +26,21 @@ var ctx context.Context
 var user string
 
 func main() {
-
 	SetUpLog()
 	//Currently takes id 0 because its the first server
-	SetUpClient(serverid)
+	cancel := SetUpClient(serverid)
+	defer cancel()
 
-	fmt.Println("Pleas write your user name:")
+	fmt.Println("Please write your user name:")
 
 	fmt.Scan(&user)
-	log.Printf("User %s has connected to the auction", user)
+	log.Printf("User %s has connected to the auction\n", user)
+	fmt.Printf("User %s has connected to the auction\n", user)
+
 
 	go Listen()
-	go ReadBids()
-	Result()
+	ReadBids()
+	//Result()
 }
 
 func Result() {
@@ -47,7 +49,7 @@ func Result() {
 		fmt.Printf("Could not listen for a result: %v\n", err)
 		log.Printf("Could not listen for a result: %v\n", err)
 	}
-	fmt.Println("Winner Winner Chiken Dinner")
+	fmt.Println("Winner Winner Chicken Dinner")
 	log.Printf("AND THE WINNER IS:\n%s with a bid of %d\n", bid.User, bid.Amount)
 }
 
@@ -59,7 +61,7 @@ func ReadBids() {
 		a, err1 := strconv.Atoi(input)
 		if err1 != nil {
 			fmt.Printf("%s is not a convertible value\n", input)
-			log.Printf("%s is not a converteble value\n", input)
+			log.Printf("%s is not a convertible value\n", input)
 			continue
 		}
 
@@ -87,7 +89,7 @@ func Listen() {
 
 func SetUpLog() {
 	//Setup the file for log outputs
-	LogFile := "./systemlogs/node.log"
+	LogFile := "./systemlogs/client.log"
 	// open log file
 	logFile, err := os.OpenFile(LogFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -103,7 +105,7 @@ func SetUpLog() {
 	log.SetOutput(logFile)
 }
 
-func SetUpClient(Id int32) {
+func SetUpClient(Id int32) func() {
 	serverAddr = Port(Id)
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
@@ -112,7 +114,7 @@ func SetUpClient(Id int32) {
 	defer func(conn *grpc.ClientConn) {
 		err := conn.Close()
 		if err != nil {
-			log.Fatalf("connection problem: %v\n", err)
+			log.Fatalf("Connection problem: %v\n", err)
 			serverid++
 			log.Fatalf("Trying to reconnect to server: %d\n", serverid)
 			SetUpClient(serverid)
@@ -122,7 +124,7 @@ func SetUpClient(Id int32) {
 	client = pb.NewAuctionServiceClient(conn)
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	return cancel
 }
 
 func Port(NodeId int32) string {
