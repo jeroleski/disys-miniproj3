@@ -30,15 +30,15 @@ running on distinct hosts. Clients direct API requests to any node
 they happen to know (it is up to you to decide how many nodes can be
 known). Nodes must respond to the following API:
 
-Method: bid
-Inputs: amount (an int)
-Outputs: ack
-Comment: given a bid, returns an outcome among {fail, success or exception}
+Method: bid  
+Inputs: amount (an int)  
+Outputs: ack  
+Comment: given a bid, returns an outcome among {fail, success or exception}  
 
-Method: result
-Inputs: void amount (an int)
-Ouputs: outcome
-Comment: if over, it returns the result, else highest bid. 
+Method: result  
+Inputs: void  
+Ouputs: outcome  
+Comment: if over, it returns the result, else highest bid.  
 
 # Semantics
 Your component must have the following behaviour, for any reasonable
