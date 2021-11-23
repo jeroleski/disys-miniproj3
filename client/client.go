@@ -99,12 +99,12 @@ func ReadBids() {
 
 func Listen() {
 	for {
-		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: ""})
+		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
 		if err != nil {
 			log.Fatalf("Could not get Info\n", err)
 		}
 
-		log.Printf("'%s' has bid $%d on the item!\n", currentHighestBid.User, currentHighestBid.Amount)
+		log.Printf("%s has bid $%d on \"SULFURAS, HAND OF RAGNAROS\"!\n", currentHighestBid.User, currentHighestBid.Amount)
 	}
 }
 
