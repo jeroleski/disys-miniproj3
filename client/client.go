@@ -26,17 +26,30 @@ var ctx context.Context
 var user string
 
 func main() {
-	SetUpLog()
+	//Sets up logs
+	//Setup the file for log outputs
+	LogFile := "./systemlogs/client.log"
+	// open log file
+	logFile, err := os.OpenFile(LogFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer func(logFile *os.File) {
+		err := logFile.Close()
+		if err != nil {
+			log.Fatalf("File not found: %v\n", err)
+		}
+	}(logFile)
+
+	//log.SetOutput(logFile)
 	//Currently takes id 0 because its the first server
 	cancel := SetUpClient(serverid)
 	defer cancel()
 
-	fmt.Println("Please write your user name:")
+	log.Println("Please write your user name:")
 
 	fmt.Scan(&user)
 	log.Printf("User %s has connected to the auction\n", user)
-	fmt.Printf("User %s has connected to the auction\n", user)
-
 
 	go Listen()
 	ReadBids()
@@ -46,10 +59,8 @@ func main() {
 func Result() {
 	bid, err := client.Result(ctx, &pb.Void{})
 	if err != nil {
-		fmt.Printf("Could not listen for a result: %v\n", err)
 		log.Printf("Could not listen for a result: %v\n", err)
 	}
-	fmt.Println("Winner Winner Chicken Dinner")
 	log.Printf("AND THE WINNER IS:\n%s with a bid of %d\n", bid.User, bid.Amount)
 }
 
@@ -60,7 +71,6 @@ func ReadBids() {
 
 		a, err1 := strconv.Atoi(input)
 		if err1 != nil {
-			fmt.Printf("%s is not a convertible value\n", input)
 			log.Printf("%s is not a convertible value\n", input)
 			continue
 		}
@@ -69,7 +79,6 @@ func ReadBids() {
 		response, err2 := client.MakeBid(ctx, &pb.Bid{Amount: amount, User: user})
 		if err2 != nil {
 			log.Fatalf("Could not make a bid: %v\n", err2)
-			fmt.Printf("Could not make a bid: %v\n", err2)
 		}
 
 		log.Println(response.Ack)
@@ -85,24 +94,6 @@ func Listen() {
 
 		log.Printf("'%s' has bid $%d on the item!\n", currentHighestBid.User, currentHighestBid.Amount)
 	}
-}
-
-func SetUpLog() {
-	//Setup the file for log outputs
-	LogFile := "./systemlogs/client.log"
-	// open log file
-	logFile, err := os.OpenFile(LogFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer func(logFile *os.File) {
-		err := logFile.Close()
-		if err != nil {
-			log.Fatalf("File not found: %v\n", err)
-		}
-	}(logFile)
-
-	log.SetOutput(logFile)
 }
 
 func SetUpClient(Id int32) func() {

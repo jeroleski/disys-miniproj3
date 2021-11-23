@@ -25,7 +25,7 @@ const (
 
 var serverAddr string
 var serverid int64 = 0
-var currentHighestBid int64
+var currentHighestBid int64 = 0
 
 type AuctionServiceServer struct {
 	pb.UnimplementedAuctionServiceServer
@@ -48,12 +48,11 @@ func main() {
 	log.Printf("Server listening at %v\n", lis.Addr())
 
 	//Connect the port we're listening on with the newly created server.
-	err2 := server.Serve(lis)
-	if err2 != nil {
+	if err := server.Serve(lis); err != nil {
 		//peer := setupNewPeerNode()
 		//peers = append(peers, peer)
 
-		log.Fatalf("Failed to serve: %v", err2)
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }
 
@@ -116,7 +115,8 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Re
 	return &pb.Response{Ack: "yaya"}, nil
 }
 
-func (s *AuctionServiceServer) GetHighestBid(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
+func (s *AuctionServiceServer) GetCurrentInfo(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
+	log.Println("tries to listen")
 	c := GetChannel(Request.User)
 	bidInfo := <-c
 	return &pb.Bid{Amount: bidInfo.Amount, User: bidInfo.User}, nil
