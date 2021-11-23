@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	pb "example/disys-miniproj3/auction"
+	"fmt"
 	"time"
 
 	"google.golang.org/grpc"
@@ -35,15 +36,22 @@ func main() {
 
 func Result(){
 	time.Sleep(time.Second)
-	for(
-		time.Sleep(time.Second)
-		respons, err = client.Result()
-
-		if(respons > currentHighestBid)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	for{
+		time.Sleep(time.Second*1)
+		respons, err := client.Result(ctx,&pb.Void{})
+		if err != nil {
+			log.Fatalf("Could not get Result", err)
+		}
+		if(int64(respons.Amount) > currentHighestBid){
+			
+			fmt.Printf("New bid %b\n")
+		}
 		
 
 
-	)
+	}
 }
 
 

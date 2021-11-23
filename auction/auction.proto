@@ -7,13 +7,16 @@ package auction;
 
 service AuctionService {
     rpc MakeBid (bid) returns (response) {};
-    rpc Result (request) returns (outcome) {};
-
+    rpc GetHighestBid (request) returns (bid) {};
+    rpc Result (void) returns (bid) {};
     rpc UpdateHighestBid (bid) returns (response) {};
 }
 
+message void {
+}
+
 message request {
-    
+    string user = 1;
 }
 
 message bid {
@@ -23,9 +26,4 @@ message bid {
 
 message response {
     string ack = 1;
-}
-
-message outcome {
-    string user = 1;
-    int32 higestBid = 2;
 }
