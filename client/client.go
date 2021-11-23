@@ -16,11 +16,14 @@ import (
 )
 
 var serverAddr string
-var serverid int64 = 0
-var currentHighestBid int64
+var serverid int32 = 0
+var currentHighestBid int32
+var userID int32
 
 var client pb.AuctionServiceClient
 var ctx context.Context
+
+var user string
 
 func main() {
 
@@ -28,54 +31,61 @@ func main() {
 	//Currently takes id 0 because its the first server
 	SetUpClient(serverid)
 
-	go Result()
+	fmt.Println("Pleas write your user name:")
 
-	Bid()
+	fmt.Scan(&user)
+	log.Printf("User %s has connected to the auction", user)
 
+	go Listen()
+	go ReadBids()
+	Result()
 }
 
-func Result(){
-	time.Sleep(time.Second)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	for{
-		time.Sleep(time.Second*1)
-		respons, err := client.Result(ctx,&pb.Void{})
-		if err != nil {
-			log.Fatalf("Could not get Result", err)
+func Result() {
+	bid, err := client.Result(ctx, &pb.Void{})
+	if err != nil {
+		fmt.Printf("Could not listen for a result: %v\n", err)
+		log.Printf("Could not listen for a result: %v\n", err)
+	}
+	fmt.Println("Winner Winner Chiken Dinner")
+	log.Printf("AND THE WINNER IS:\n%s with a bid of %d\n", bid.User, bid.Amount)
+}
+
+func ReadBids() {
+	for {
+		var input string
+		fmt.Scan(&input)
+
+		a, err1 := strconv.Atoi(input)
+		if err1 != nil {
+			fmt.Printf("%s is not a convertible value\n", input)
+			log.Printf("%s is not a converteble value\n", input)
+			continue
 		}
-		if(int64(respons.Amount) > currentHighestBid){
-			
-			fmt.Printf("A new bid have been placed %b")
+
+		amount := int32(a)
+		response, err2 := client.MakeBid(ctx, &pb.Bid{Amount: amount, User: user})
+		if err2 != nil {
+			log.Fatalf("Could not make a bid: %v\n", err2)
+			fmt.Printf("Could not make a bid: %v\n", err2)
 		}
-		
+
+		log.Println(response.Ack)
 	}
 }
 
-func Bid(){
+func Listen() {
+	for {
+		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: ""})
+		if err != nil {
+			log.Fatalf("Could not get Info\n", err)
+		}
 
-
-
-
-
-
-
-
-
-
-	
+		log.Printf("'%s' has bid $%d on the item!\n", currentHighestBid.User, currentHighestBid.Amount)
+	}
 }
 
-
-
-
-
-
-
-
-
-
-func SetUpLog(){
+func SetUpLog() {
 	//Setup the file for log outputs
 	LogFile := "./systemlogs/node.log"
 	// open log file
@@ -86,25 +96,25 @@ func SetUpLog(){
 	defer func(logFile *os.File) {
 		err := logFile.Close()
 		if err != nil {
-			log.Fatalf("File not found: %v", err)
+			log.Fatalf("File not found: %v\n", err)
 		}
 	}(logFile)
 
-	log.SetOutput(logFile)	
+	log.SetOutput(logFile)
 }
 
-func SetUpClient(Id int64) {
+func SetUpClient(Id int32) {
 	serverAddr = Port(Id)
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Fatalf("did not connect: %v\n", err)
 	}
 	defer func(conn *grpc.ClientConn) {
 		err := conn.Close()
 		if err != nil {
-			log.Fatalf("connection problem: %v", err)
+			log.Fatalf("connection problem: %v\n", err)
 			serverid++
-			log.Fatalf("Trying to reconnect to server: %d", serverid)
+			log.Fatalf("Trying to reconnect to server: %d\n", serverid)
 			SetUpClient(serverid)
 		}
 	}(conn)
@@ -115,7 +125,7 @@ func SetUpClient(Id int64) {
 	defer cancel()
 }
 
-func Port(NodeId int64) string {
+func Port(NodeId int32) string {
 	file, err := os.Open("ServerPorts.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -124,8 +134,8 @@ func Port(NodeId int64) string {
 	var Port0 string
 	for scanner.Scan() {
 		IdPort := strings.Split(scanner.Text(), " ")
-		Id, _ := strconv.ParseInt(IdPort[0], 10, 64)
-		if Id == NodeId {
+		Id, _ := (strconv.ParseInt(IdPort[0], 10, 64))
+		if int32(Id) == NodeId {
 			Port0 = IdPort[1]
 		}
 	}
