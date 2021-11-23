@@ -15,10 +15,9 @@ import (
 	"strings"
 )
 
-var serverAddr string
-var serverid int32 = 0
-var currentHighestBid int32
-var userID int32
+const (
+	serverAddr = "localhost:8080"
+)
 
 var client pb.AuctionServiceClient
 var ctx context.Context
@@ -42,8 +41,21 @@ func main() {
 	}(logFile)
 
 	//log.SetOutput(logFile)
-	//Currently takes id 0 because its the first server
-	cancel := SetUpClient(serverid)
+	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			log.Fatalf("connection problem: %v", err)
+		}
+	}(conn)
+
+	client = pb.NewAuctionServiceClient(conn)
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
 	log.Println("Please write your user name:")
@@ -94,28 +106,6 @@ func Listen() {
 
 		log.Printf("'%s' has bid $%d on the item!\n", currentHighestBid.User, currentHighestBid.Amount)
 	}
-}
-
-func SetUpClient(Id int32) func() {
-	serverAddr = Port(Id)
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v\n", err)
-	}
-	defer func(conn *grpc.ClientConn) {
-		err := conn.Close()
-		if err != nil {
-			log.Fatalf("Connection problem: %v\n", err)
-			serverid++
-			log.Fatalf("Trying to reconnect to server: %d\n", serverid)
-			SetUpClient(serverid)
-		}
-	}(conn)
-
-	client = pb.NewAuctionServiceClient(conn)
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Minute)
-	return cancel
 }
 
 func Port(NodeId int32) string {
