@@ -62,10 +62,7 @@ func main() {
 	fmt.Scan(&user)
 	log.Printf("User %s has connected to the auction\n", user)
 
-	go ListenForTime()
-	go ListenForBids()
-	ReadBids()
-	//Result()
+	StartClient()
 }
 
 func connectToServe() {
@@ -83,15 +80,42 @@ func connectToServe() {
 	}(conn)
 
 	client = pb.NewAuctionServiceClient(conn)
-	ReadBids()
+
+	StartClient()
 }
 
-func Result() {
-	bid, err := client.Result(ctx, &pb.Void{})
-	if err != nil {
-		log.Printf("Could not listen for a result: %v\n", err)
+func StartClient() {
+	go ListenForTime()
+	go ListenForBids()
+	go ReadBids()
+	GetResult()
+}
+
+func ListenForTime() {
+	for {
+		time, err := client.UpdateTime(ctx, &pb.Request{User: user})
+		if err != nil {
+			log.Print("Could not get Info\n", err)
+			log.Print("A wild Wormbat appeard\n")
+			connectToServe()
+		}
+
+		log.Printf("\"%s\" seconds left of the auction!\n", time.TimeLeft)
 	}
-	log.Printf("AND THE WINNER IS:\n%s with a bid of %d\n", bid.User, bid.Amount)
+}
+
+func ListenForBids() {
+	for {
+		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
+		if err != nil {
+			log.Print("Could not get Info\n", err)
+			log.Print("A wild Wormbat appeard\n")
+			connectToServe()
+
+		}
+
+		log.Printf("%s has bid $%d on the auction!\n", currentHighestBid.User, currentHighestBid.Amount)
+	}
 }
 
 func ReadBids() {
@@ -115,17 +139,21 @@ func ReadBids() {
 	}
 }
 
-func ListenForBids() {
-	for {
-		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
-		if err != nil {
-			log.Print("Could not get Info\n", err)
-			log.Print("A wild Wormbat appeard\n")
-			connectToServe()
+func GetResult() {
+	bid, err := client.Result(ctx, &pb.Void{})
+	if err != nil {
+		log.Printf("Could not get Result: %v\n", err)
+		log.Println("A wild Wormbat appeard")
+		connectToServe()
+	}
 
-		}
+	if bid.User == user {
+		bid.User = "You"
+	}
 
-		log.Printf("%s has bid $%d on \"SULFURAS, HAND OF RAGNAROS\"!\n", currentHighestBid.User, currentHighestBid.Amount)
+	log.Printf("%s have bought \"SULFURAS, HAND OF RAGNAROS\" for $%v\n", bid.User, bid.Amount)
+	if bid.User == "You" {
+		log.Println("Please call in to give us your credit card number!")
 	}
 }
 

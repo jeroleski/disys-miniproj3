@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	//"time"
+	"time"
 
 	"os"
 	"strconv"
@@ -16,7 +16,8 @@ import (
 	"bufio"
 	"log"
 
-	"sync"
+	bid "example/disys-miniproj3/server/bid"
+	timer "example/disys-miniproj3/server/timer"
 )
 
 var serverAddr string
@@ -27,9 +28,9 @@ type AuctionServiceServer struct {
 	pb.UnimplementedAuctionServiceServer
 }
 
-//var peers []pb.AuctionServiceClient = make([]pb.AuctionServiceClient, 0)
-var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]*BidInfo, 0)}
-var hb *HighestBid = &HighestBid{bidInfo: &BidInfo{Amount: 69, User: "SELLER"}}
+var connections *bid.ConnectionHolder = &bid.ConnectionHolder{ConnectedClients: make(map[string]*bid.BidInfo, 0)}
+var highestBid *bid.HighestBidHolder = &bid.HighestBidHolder{BidInfo: &bid.BidInfo{Amount: 69, User: "SELLER"}}
+var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * 20, Await: time.Second * 10, Read: make(map[string]bool), IsTicking: false}
 
 func main() {
 
@@ -63,30 +64,6 @@ func main() {
 	}
 }
 
-/* func setupNewPeerNode() *pb.AuctionServiceClient {
-	serverAddr := Port(serverid)
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
-	defer func(conn *grpc.ClientConn) {
-		err := conn.Close()
-		if err != nil {
-			log.Fatalf("connection problem: %v", err)
-			serverid++
-			log.Fatalf("Trying to reconnect to server: %d", serverid)
-			setupNewPeerNode()
-		}
-	}(conn)
-
-	client := pb.NewAuctionServiceClient(conn)
-	var cancel context.CancelFunc
-	_, cancel := context.WithTimeout(context.Background(), 10 * time.Minute)
-	defer cancel()
-
-	return &client
-} */
-
 func Port(ServerId int32) string {
 	file, err := os.Open("ServerPorts.txt")
 	if err != nil {
@@ -106,118 +83,54 @@ func Port(ServerId int32) string {
 }
 
 func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Response, error) {
-	AddClient(Bid.User)
-	success := SetBid(Bid.Amount, Bid.User)
+	connections.AddClient(Bid.User, highestBid.GetHighestBid())
+	success := highestBid.SetBid(Bid.Amount, Bid.User)
 	if !success {
-		return &pb.Response{Ack: "You must make a minimal bid higher than $" + strconv.FormatInt(int64(GetHighestBid().Amount), 10)}, nil
+		return &pb.Response{Ack: "You must make a minimal bid higher than $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 	}
 
-	/*for _, peer := range peers {
-		peer.UpdateHighestBid(ctx, Bid)
-	}*/
-
 	log.Printf("%s made a bid of $%d", Bid.User, Bid.Amount)
-	BroadcastBid(&BidInfo{Bid.Amount, Bid.User})
+	BroadcastBid(&bid.BidInfo{Bid.Amount, Bid.User})
 
-	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(GetHighestBid().Amount), 10)}, nil
+	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 }
 
 func (s *AuctionServiceServer) GetCurrentInfo(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
 	for {
-		bidInfo := GetBidInfo(Request.User)
-		if bidInfo != nil {
-			return &pb.Bid{Amount: bidInfo.Amount, User: bidInfo.User}, nil
+		BidInfo := connections.GetBidInfo(Request.User)
+		if BidInfo != nil {
+			return &pb.Bid{Amount: BidInfo.Amount, User: BidInfo.User}, nil
 		}
 	}
 }
 
 func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*pb.Bid, error) {
-	return nil, nil
+	for {
+		if auctionTimer.TimesUp() {
+			bid := highestBid.GetHighestBid()
+			return &pb.Bid{Amount: bid.Amount, User: bid.User}, nil
+		}
+	}
 }
 
-func (s *AuctionServiceServer) UpdateHighestBid(ctx context.Context, Bid *pb.Bid) (*pb.Response, error) {
-	hb = &HighestBid{bidInfo: &BidInfo{Amount: Bid.Amount, User: Bid.User}}
-	return &pb.Response{Ack: "yaya"}, nil
+func (s *AuctionServiceServer) UpdateTime(ctx context.Context, Request *pb.Request) (*pb.Time, error) {
+	for {
+		timeLeft, read := auctionTimer.GetTime(Request.User)
+		if !read {
+			s := strconv.Itoa(int(timeLeft.Seconds()))
+			return &pb.Time{TimeLeft: s}, nil
+		}
+	}
 }
 
-func BroadcastBid(bidInfo *BidInfo) {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
+func BroadcastBid(BidInfo *bid.BidInfo) {
+	connections.Mu.Lock()
+	defer connections.Mu.Unlock()
 
-	for s, _ := range ch.connectedClients {
-		if s == bidInfo.User {
+	for s, _ := range connections.ConnectedClients {
+		if s == BidInfo.User {
 			continue
 		}
-		ch.connectedClients[s] = bidInfo
+		connections.ConnectedClients[s] = BidInfo
 	}
 }
-
-type BidInfo struct {
-	Amount int32
-	User   string
-}
-
-type ConnectionHolder struct {
-	connectedClients map[string]*BidInfo
-	mu               sync.Mutex
-}
-
-func AddClient(user string) bool {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
-
-	if ch.connectedClients[user] == nil {
-		bidInfo := GetHighestBid()
-		ch.connectedClients[user] = &BidInfo{Amount: bidInfo.Amount, User: bidInfo.User}
-		return true
-	}
-
-	return false
-}
-func GetBidInfo(user string) *BidInfo {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
-
-	bidInfo := ch.connectedClients[user]
-	ch.connectedClients[user] = nil
-	return bidInfo
-}
-
-type HighestBid struct {
-	bidInfo *BidInfo
-	mu      sync.Mutex
-}
-
-func SetBid(Amount int32, User string) bool {
-	hb.mu.Lock()
-	defer hb.mu.Unlock()
-
-	if hb.bidInfo.Amount > Amount {
-		return false
-	}
-
-	hb.bidInfo = &BidInfo{Amount: Amount, User: User}
-
-	return true
-}
-func GetHighestBid() *BidInfo {
-	hb.mu.Lock()
-	defer hb.mu.Unlock()
-
-	return hb.bidInfo
-}
-
-
-/*var timer Timeout
-type Timeout struct {
-	time string
-	mu sync.Mutex
-}
-func startTime() {
-	for range time.Tick(time.Second) {
-		timer.mu.Lock()
-		do
-		timer.mu.Unlock()
-	}
-}*/
-
