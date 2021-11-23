@@ -33,14 +33,14 @@ type AuctionServiceServer struct {
 }
 
 var peers []pb.AuctionServiceClient = make([]pb.AuctionServiceClient, 0)
-var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]chan int32, 0)}
+var ch *ConnectionHolder = &ConnectionHolder{connectedClients: make(map[string]chan BidInfo, 0)}
 var hb *HighestBid = &HighestBid{currentHighestBid: 0, User: ""}
 
 func main() {
 	//Server listens on the server port and handles error.
 	lis, err1 := net.Listen("tcp", port)
 	if err1 != nil {
-		log.Fatal("Failed to listen: %v", err1)
+		log.Fatalf("Failed to listen: %v", err1)
 	}
 
 	//Create and register a new grpc server
@@ -111,15 +111,16 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Re
 		peer.UpdateHighestBid(ctx, Bid)
 	}
 
-	BroadcastBid(Bid.Amount)
+	BroadcastBid(GetBidInfo(Bid.Amount, Bid.User))
 
 	return &pb.Response{Ack: "yaya"}, nil
 }
 
-func (s *AuctionServiceServer) GetHighestBid(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
+func (s *AuctionServiceServer) GetHighestBid(ctx context.Context, Request *pb.Request) (*pb.AuctionInfo, error) {
 	c := GetChannel(Request.User)
-	highestBid := <-c
-	return &pb.Bid{Amount: highestBid, User: ""}, nil
+	bidInfo := <-c
+	bid := &pb.Bid{Amount: bidInfo.Amount, User: bidInfo.User}
+	return &pb.AuctionInfo{Bid: bid, TimeLeft: 0}, nil
 }
 
 func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*pb.Bid, error) {
@@ -131,21 +132,30 @@ func (s *AuctionServiceServer) UpdateHighestBid(ctx context.Context, Bid *pb.Bid
 	return &pb.Response{Ack: "yaya"}, nil
 }
 
-func BroadcastBid(Amount int32) {
+func BroadcastBid(bidInfo BidInfo) {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
 	for _, c := range ch.connectedClients {
-		go Send(Amount, c)
+		go Send(bidInfo, c)
 	}
 }
 
-func Send(Amount int32, c chan int32) {
-	c <- Amount
+func Send(bidInfo BidInfo, c chan BidInfo) {
+	c <- bidInfo
+}
+
+type BidInfo struct {
+	Amount int32
+	User   string
+}
+
+func GetBidInfo(amount int32, user string) BidInfo {
+	return BidInfo{Amount: amount, User: user}
 }
 
 type ConnectionHolder struct {
-	connectedClients map[string](chan int32)
+	connectedClients map[string](chan BidInfo)
 	mu               sync.Mutex
 }
 
@@ -154,14 +164,14 @@ func AddClient(User string) bool {
 	defer ch.mu.Unlock()
 
 	if ch.connectedClients[User] == nil {
-		ch.connectedClients[User] = make(chan int32)
+		ch.connectedClients[User] = make(chan BidInfo)
 		return true
 	}
 
 	return false
 }
 
-func GetChannel(User string) chan int32 {
+func GetChannel(User string) chan BidInfo {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 

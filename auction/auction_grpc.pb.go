@@ -19,7 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionServiceClient interface {
 	MakeBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
-	GetHighestBid(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Bid, error)
+	GetCurrentInfo(ctx context.Context, in *Request, opts ...grpc.CallOption) (*AuctionInfo, error)
 	Result(ctx context.Context, in *Void, opts ...grpc.CallOption) (*Bid, error)
 	UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
 }
@@ -41,9 +41,9 @@ func (c *auctionServiceClient) MakeBid(ctx context.Context, in *Bid, opts ...grp
 	return out, nil
 }
 
-func (c *auctionServiceClient) GetHighestBid(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Bid, error) {
-	out := new(Bid)
-	err := c.cc.Invoke(ctx, "/auction.AuctionService/GetHighestBid", in, out, opts...)
+func (c *auctionServiceClient) GetCurrentInfo(ctx context.Context, in *Request, opts ...grpc.CallOption) (*AuctionInfo, error) {
+	out := new(AuctionInfo)
+	err := c.cc.Invoke(ctx, "/auction.AuctionService/GetCurrentInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (c *auctionServiceClient) UpdateHighestBid(ctx context.Context, in *Bid, op
 // for forward compatibility
 type AuctionServiceServer interface {
 	MakeBid(context.Context, *Bid) (*Response, error)
-	GetHighestBid(context.Context, *Request) (*Bid, error)
+	GetCurrentInfo(context.Context, *Request) (*AuctionInfo, error)
 	Result(context.Context, *Void) (*Bid, error)
 	UpdateHighestBid(context.Context, *Bid) (*Response, error)
 	mustEmbedUnimplementedAuctionServiceServer()
@@ -86,8 +86,8 @@ type UnimplementedAuctionServiceServer struct {
 func (UnimplementedAuctionServiceServer) MakeBid(context.Context, *Bid) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MakeBid not implemented")
 }
-func (UnimplementedAuctionServiceServer) GetHighestBid(context.Context, *Request) (*Bid, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetHighestBid not implemented")
+func (UnimplementedAuctionServiceServer) GetCurrentInfo(context.Context, *Request) (*AuctionInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentInfo not implemented")
 }
 func (UnimplementedAuctionServiceServer) Result(context.Context, *Void) (*Bid, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
@@ -126,20 +126,20 @@ func _AuctionService_MakeBid_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuctionService_GetHighestBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _AuctionService_GetCurrentInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuctionServiceServer).GetHighestBid(ctx, in)
+		return srv.(AuctionServiceServer).GetCurrentInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auction.AuctionService/GetHighestBid",
+		FullMethod: "/auction.AuctionService/GetCurrentInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServiceServer).GetHighestBid(ctx, req.(*Request))
+		return srv.(AuctionServiceServer).GetCurrentInfo(ctx, req.(*Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -192,8 +192,8 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AuctionService_MakeBid_Handler,
 		},
 		{
-			MethodName: "GetHighestBid",
-			Handler:    _AuctionService_GetHighestBid_Handler,
+			MethodName: "GetCurrentInfo",
+			Handler:    _AuctionService_GetCurrentInfo_Handler,
 		},
 		{
 			MethodName: "Result",

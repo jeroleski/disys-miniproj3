@@ -49,12 +49,22 @@ func Result(){
 			fmt.Printf("A new bid have been placed %b")
 		}
 		
-
-
 	}
 }
 
+func Bid(){
 
+
+
+
+
+
+
+
+
+
+	
+}
 
 
 
