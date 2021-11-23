@@ -46,7 +46,8 @@ func main() {
 	defer func(conn *grpc.ClientConn) {
 		err := conn.Close()
 		if err != nil {
-			log.Fatalf("connection problem: %v", err)
+			log.Fatalf("connection problem : %v", err)
+			connectToServe()
 		}
 	}(conn)
 
@@ -64,6 +65,24 @@ func main() {
 	go Listen()
 	ReadBids()
 	//Result()
+}
+
+func connectToServe() {
+	log.Print("Reconnecting")
+	conn, err := grpc.Dial(Port(1), grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			log.Fatalf("connection problem : %v", err)
+		}
+	}(conn)
+
+	client = pb.NewAuctionServiceClient(conn)
+	ReadBids()
 }
 
 func Result() {
@@ -99,7 +118,10 @@ func Listen() {
 	for {
 		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: ""})
 		if err != nil {
-			log.Fatalf("Could not get Info\n", err)
+			log.Print("Could not get Info\n", err)
+			log.Print("A wild Wormbat appeard\n")
+			connectToServe()
+
 		}
 
 		log.Printf("'%s' has bid $%d on the item!\n", currentHighestBid.User, currentHighestBid.Amount)
@@ -120,6 +142,7 @@ func Port(ServerId int32) string {
 			Port0 = IdPort[1]
 		}
 	}
+	serverId++
 	return Port0
 
 }
