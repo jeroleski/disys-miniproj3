@@ -199,3 +199,18 @@ func GetHighestBid() *BidInfo {
 
 	return hb.bidInfo
 }
+
+
+/*var timer Timeout
+type Timeout struct {
+	time string
+	mu sync.Mutex
+}
+func startTime() {
+	for range time.Tick(time.Second) {
+		timer.mu.Lock()
+		do
+		timer.mu.Unlock()
+	}
+}*/
+

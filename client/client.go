@@ -63,7 +63,8 @@ func main() {
 	fmt.Scan(&user)
 	log.Printf("User %s has connected to the auction\n", user)
 
-	go Listen()
+	go ListenForTime()
+	go ListenForBids()
 	ReadBids()
 	//Result()
 }
@@ -97,7 +98,7 @@ func ReadBids() {
 	}
 }
 
-func Listen() {
+func ListenForBids() {
 	for {
 		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
 		if err != nil {
