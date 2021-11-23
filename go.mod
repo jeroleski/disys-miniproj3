@@ -1,4 +1,4 @@
-module example/Mini_Project_2_Chitty-Chat
+module example/disys-miniproj3/auction
 
 go 1.17
 
