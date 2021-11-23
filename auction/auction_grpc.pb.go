@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type AuctionServiceClient interface {
 	MakeBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
 	Result(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Outcome, error)
+	UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
 }
 
 type auctionServiceClient struct {
@@ -48,12 +49,22 @@ func (c *auctionServiceClient) Result(ctx context.Context, in *Request, opts ...
 	return out, nil
 }
 
+func (c *auctionServiceClient) UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, "/auction.AuctionService/UpdateHighestBid", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuctionServiceServer is the server API for AuctionService service.
 // All implementations must embed UnimplementedAuctionServiceServer
 // for forward compatibility
 type AuctionServiceServer interface {
 	MakeBid(context.Context, *Bid) (*Response, error)
 	Result(context.Context, *Request) (*Outcome, error)
+	UpdateHighestBid(context.Context, *Bid) (*Response, error)
 	mustEmbedUnimplementedAuctionServiceServer()
 }
 
@@ -66,6 +77,9 @@ func (UnimplementedAuctionServiceServer) MakeBid(context.Context, *Bid) (*Respon
 }
 func (UnimplementedAuctionServiceServer) Result(context.Context, *Request) (*Outcome, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
+}
+func (UnimplementedAuctionServiceServer) UpdateHighestBid(context.Context, *Bid) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHighestBid not implemented")
 }
 func (UnimplementedAuctionServiceServer) mustEmbedUnimplementedAuctionServiceServer() {}
 
@@ -116,6 +130,24 @@ func _AuctionService_Result_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuctionService_UpdateHighestBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Bid)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).UpdateHighestBid(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/auction.AuctionService/UpdateHighestBid",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).UpdateHighestBid(ctx, req.(*Bid))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuctionService_ServiceDesc is the grpc.ServiceDesc for AuctionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -130,6 +162,10 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Result",
 			Handler:    _AuctionService_Result_Handler,
+		},
+		{
+			MethodName: "UpdateHighestBid",
+			Handler:    _AuctionService_UpdateHighestBid_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

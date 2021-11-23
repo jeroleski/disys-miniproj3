@@ -7,8 +7,9 @@ package auction;
 
 service AuctionService {
     rpc MakeBid (bid) returns (response) {};
-
     rpc Result (request) returns (outcome) {};
+
+    rpc UpdateHighestBid (bid) returns (response) {};
 }
 
 message request {
