@@ -7,10 +7,9 @@ package auction;
 
 service AuctionService {
     rpc MakeBid (Bid) returns (Response) {};
-    rpc GetCurrentInfo (Request) returns (Bid) {};
+    rpc GetStreamHighestbid (Request) returns (stream Bid) {};
     rpc Result (Void) returns (Bid) {};
-    rpc UpdateHighestBid (Bid) returns (Response) {};
-    rpc UpdateTime (Request) returns (stream Time) {};
+    rpc GetStreamTimeleft (Request) returns (stream Time) {};
 }
 
 message Void {
@@ -30,5 +29,5 @@ message Response {
 }
 
 message Time {
-    string TimeLeft = 1;
+    string Msg = 1;
 }

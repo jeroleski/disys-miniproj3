@@ -19,10 +19,9 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionServiceClient interface {
 	MakeBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
-	GetCurrentInfo(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Bid, error)
+	GetStreamHighestbid(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_GetStreamHighestbidClient, error)
 	Result(ctx context.Context, in *Void, opts ...grpc.CallOption) (*Bid, error)
-	UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
-	UpdateTime(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_UpdateTimeClient, error)
+	GetStreamTimeleft(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_GetStreamTimeleftClient, error)
 }
 
 type auctionServiceClient struct {
@@ -42,13 +41,36 @@ func (c *auctionServiceClient) MakeBid(ctx context.Context, in *Bid, opts ...grp
 	return out, nil
 }
 
-func (c *auctionServiceClient) GetCurrentInfo(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Bid, error) {
-	out := new(Bid)
-	err := c.cc.Invoke(ctx, "/auction.AuctionService/GetCurrentInfo", in, out, opts...)
+func (c *auctionServiceClient) GetStreamHighestbid(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_GetStreamHighestbidClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionService_ServiceDesc.Streams[0], "/auction.AuctionService/GetStreamHighestbid", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &auctionServiceGetStreamHighestbidClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type AuctionService_GetStreamHighestbidClient interface {
+	Recv() (*Bid, error)
+	grpc.ClientStream
+}
+
+type auctionServiceGetStreamHighestbidClient struct {
+	grpc.ClientStream
+}
+
+func (x *auctionServiceGetStreamHighestbidClient) Recv() (*Bid, error) {
+	m := new(Bid)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *auctionServiceClient) Result(ctx context.Context, in *Void, opts ...grpc.CallOption) (*Bid, error) {
@@ -60,21 +82,12 @@ func (c *auctionServiceClient) Result(ctx context.Context, in *Void, opts ...grp
 	return out, nil
 }
 
-func (c *auctionServiceClient) UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error) {
-	out := new(Response)
-	err := c.cc.Invoke(ctx, "/auction.AuctionService/UpdateHighestBid", in, out, opts...)
+func (c *auctionServiceClient) GetStreamTimeleft(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_GetStreamTimeleftClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionService_ServiceDesc.Streams[1], "/auction.AuctionService/GetStreamTimeleft", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-func (c *auctionServiceClient) UpdateTime(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_UpdateTimeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &AuctionService_ServiceDesc.Streams[0], "/auction.AuctionService/UpdateTime", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &auctionServiceUpdateTimeClient{stream}
+	x := &auctionServiceGetStreamTimeleftClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -84,16 +97,16 @@ func (c *auctionServiceClient) UpdateTime(ctx context.Context, in *Request, opts
 	return x, nil
 }
 
-type AuctionService_UpdateTimeClient interface {
+type AuctionService_GetStreamTimeleftClient interface {
 	Recv() (*Time, error)
 	grpc.ClientStream
 }
 
-type auctionServiceUpdateTimeClient struct {
+type auctionServiceGetStreamTimeleftClient struct {
 	grpc.ClientStream
 }
 
-func (x *auctionServiceUpdateTimeClient) Recv() (*Time, error) {
+func (x *auctionServiceGetStreamTimeleftClient) Recv() (*Time, error) {
 	m := new(Time)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -106,10 +119,9 @@ func (x *auctionServiceUpdateTimeClient) Recv() (*Time, error) {
 // for forward compatibility
 type AuctionServiceServer interface {
 	MakeBid(context.Context, *Bid) (*Response, error)
-	GetCurrentInfo(context.Context, *Request) (*Bid, error)
+	GetStreamHighestbid(*Request, AuctionService_GetStreamHighestbidServer) error
 	Result(context.Context, *Void) (*Bid, error)
-	UpdateHighestBid(context.Context, *Bid) (*Response, error)
-	UpdateTime(*Request, AuctionService_UpdateTimeServer) error
+	GetStreamTimeleft(*Request, AuctionService_GetStreamTimeleftServer) error
 	mustEmbedUnimplementedAuctionServiceServer()
 }
 
@@ -120,17 +132,14 @@ type UnimplementedAuctionServiceServer struct {
 func (UnimplementedAuctionServiceServer) MakeBid(context.Context, *Bid) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MakeBid not implemented")
 }
-func (UnimplementedAuctionServiceServer) GetCurrentInfo(context.Context, *Request) (*Bid, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentInfo not implemented")
+func (UnimplementedAuctionServiceServer) GetStreamHighestbid(*Request, AuctionService_GetStreamHighestbidServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetStreamHighestbid not implemented")
 }
 func (UnimplementedAuctionServiceServer) Result(context.Context, *Void) (*Bid, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
 }
-func (UnimplementedAuctionServiceServer) UpdateHighestBid(context.Context, *Bid) (*Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateHighestBid not implemented")
-}
-func (UnimplementedAuctionServiceServer) UpdateTime(*Request, AuctionService_UpdateTimeServer) error {
-	return status.Errorf(codes.Unimplemented, "method UpdateTime not implemented")
+func (UnimplementedAuctionServiceServer) GetStreamTimeleft(*Request, AuctionService_GetStreamTimeleftServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetStreamTimeleft not implemented")
 }
 func (UnimplementedAuctionServiceServer) mustEmbedUnimplementedAuctionServiceServer() {}
 
@@ -163,22 +172,25 @@ func _AuctionService_MakeBid_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuctionService_GetCurrentInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
-	if err := dec(in); err != nil {
-		return nil, err
+func _AuctionService_GetStreamHighestbid_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Request)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(AuctionServiceServer).GetCurrentInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/auction.AuctionService/GetCurrentInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServiceServer).GetCurrentInfo(ctx, req.(*Request))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(AuctionServiceServer).GetStreamHighestbid(m, &auctionServiceGetStreamHighestbidServer{stream})
+}
+
+type AuctionService_GetStreamHighestbidServer interface {
+	Send(*Bid) error
+	grpc.ServerStream
+}
+
+type auctionServiceGetStreamHighestbidServer struct {
+	grpc.ServerStream
+}
+
+func (x *auctionServiceGetStreamHighestbidServer) Send(m *Bid) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _AuctionService_Result_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -199,42 +211,24 @@ func _AuctionService_Result_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuctionService_UpdateHighestBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Bid)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionServiceServer).UpdateHighestBid(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/auction.AuctionService/UpdateHighestBid",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServiceServer).UpdateHighestBid(ctx, req.(*Bid))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuctionService_UpdateTime_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _AuctionService_GetStreamTimeleft_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(Request)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(AuctionServiceServer).UpdateTime(m, &auctionServiceUpdateTimeServer{stream})
+	return srv.(AuctionServiceServer).GetStreamTimeleft(m, &auctionServiceGetStreamTimeleftServer{stream})
 }
 
-type AuctionService_UpdateTimeServer interface {
+type AuctionService_GetStreamTimeleftServer interface {
 	Send(*Time) error
 	grpc.ServerStream
 }
 
-type auctionServiceUpdateTimeServer struct {
+type auctionServiceGetStreamTimeleftServer struct {
 	grpc.ServerStream
 }
 
-func (x *auctionServiceUpdateTimeServer) Send(m *Time) error {
+func (x *auctionServiceGetStreamTimeleftServer) Send(m *Time) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -250,22 +244,19 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AuctionService_MakeBid_Handler,
 		},
 		{
-			MethodName: "GetCurrentInfo",
-			Handler:    _AuctionService_GetCurrentInfo_Handler,
-		},
-		{
 			MethodName: "Result",
 			Handler:    _AuctionService_Result_Handler,
-		},
-		{
-			MethodName: "UpdateHighestBid",
-			Handler:    _AuctionService_UpdateHighestBid_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "UpdateTime",
-			Handler:       _AuctionService_UpdateTime_Handler,
+			StreamName:    "GetStreamHighestbid",
+			Handler:       _AuctionService_GetStreamHighestbid_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetStreamTimeleft",
+			Handler:       _AuctionService_GetStreamTimeleft_Handler,
 			ServerStreams: true,
 		},
 	},

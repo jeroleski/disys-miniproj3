@@ -6,25 +6,28 @@ import (
 )
 
 type Timer struct {
-	Time      time.Duration
-	Await     time.Duration
-	Read      map[string](chan time.Duration)
-	IsTicking bool
-	Mu        sync.Mutex
+	Time         time.Duration
+	Await        time.Duration
+	UserChannels map[string]chan time.Duration
+	IsTicking    bool
+	Mu           sync.Mutex
+	OnClose      func()
 }
 
 func (timer *Timer) Tick() {
 	for range time.Tick(timer.Await) {
+		if timer.TimesUp() {
+			break
+		}
+
 		timer.NotifyAll()
 
 		timer.Mu.Lock()
 		timer.Time -= timer.Await
 		timer.Mu.Unlock()
-
-		if timer.TimesUp() {
-			break
-		}
 	}
+	timer.CloseAll()
+	timer.OnClose()
 }
 
 func (timer *Timer) NotifyAll() {
@@ -32,11 +35,41 @@ func (timer *Timer) NotifyAll() {
 	defer timer.Mu.Unlock()
 
 	t := timer.Time
-	for _, c := range timer.Read {
-		go func() {
-			c <- t
-		}()
+	for _, c := range timer.UserChannels {
+		go Notify(c, t)
 	}
+}
+
+func Notify(c chan time.Duration, t time.Duration) {
+	c <- t
+}
+
+func (timer *Timer) CloseAll() {
+	timer.Mu.Lock()
+	defer timer.Mu.Unlock()
+
+	for _, c := range timer.UserChannels {
+		select {
+		case _ = <-c:
+		default:
+		}
+		close(c)
+	}
+
+	timer.UserChannels = make(map[string](chan time.Duration))
+}
+
+func (timer *Timer) AddClient(user string) bool {
+	timer.Mu.Lock()
+	defer timer.Mu.Unlock()
+
+	if timer.UserChannels[user] == nil {
+		timer.UserChannels[user] = make(chan time.Duration)
+		return true
+	}
+
+	return false
+
 }
 
 func (timer *Timer) GetChannel(user string) chan time.Duration {
@@ -48,11 +81,7 @@ func (timer *Timer) GetChannel(user string) chan time.Duration {
 		go timer.Tick()
 	}
 
-	if timer.Read[user] == nil {
-		timer.Read[user] = make(chan time.Duration)
-	}
-
-	return timer.Read[user]
+	return timer.UserChannels[user]
 }
 
 func (timer *Timer) TimesUp() bool {
