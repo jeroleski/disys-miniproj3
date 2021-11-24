@@ -94,3 +94,8 @@ Write a report of at most 5 pages containing the following structure
   print statements, that demonstrates the control flow trough the
   system. It must be clear from the log where crashes occur.
   
+# Jackeys notes
+- bidders can query the system in order to know the state of the
+auction.
+- What if the winning client has disjoined
+- Cleaner reconnections
