@@ -1,9 +1,8 @@
 package timer
 
 import (
-	"fmt"
-	"time"
 	"sync"
+	"time"
 )
 
 type Timer struct {
@@ -16,12 +15,10 @@ type Timer struct {
 
 func (timer *Timer) Tick() {
 	for range time.Tick(timer.Await) {
-		timer.Mu.Lock()
-
 		timer.NotifyAll()
 
+		timer.Mu.Lock()
 		timer.Time -= timer.Await
-
 		timer.Mu.Unlock()
 
 		if timer.TimesUp() {
@@ -31,18 +28,15 @@ func (timer *Timer) Tick() {
 }
 
 func (timer *Timer) NotifyAll() {
+	timer.Mu.Lock()
+	defer timer.Mu.Unlock()
+
 	t := timer.Time
 	for _, c := range timer.Read {
 		go func() {
 			c <- t
 		}()
 	}
-}
-
-func Send(t time.Duration, c chan time.Duration) {
-	fmt.Println("sending time")
-	c <- t
-	fmt.Println("time has been send")
 }
 
 func (timer *Timer) GetChannel(user string) chan time.Duration {

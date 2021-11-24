@@ -10,7 +10,7 @@ service AuctionService {
     rpc GetCurrentInfo (Request) returns (Bid) {};
     rpc Result (Void) returns (Bid) {};
     rpc UpdateHighestBid (Bid) returns (Response) {};
-    rpc UpdateTime (Request) returns (Time) {};
+    rpc UpdateTime (Request) returns (stream Time) {};
 }
 
 message Void {

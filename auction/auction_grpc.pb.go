@@ -22,7 +22,7 @@ type AuctionServiceClient interface {
 	GetCurrentInfo(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Bid, error)
 	Result(ctx context.Context, in *Void, opts ...grpc.CallOption) (*Bid, error)
 	UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
-	UpdateTime(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Time, error)
+	UpdateTime(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_UpdateTimeClient, error)
 }
 
 type auctionServiceClient struct {
@@ -69,13 +69,36 @@ func (c *auctionServiceClient) UpdateHighestBid(ctx context.Context, in *Bid, op
 	return out, nil
 }
 
-func (c *auctionServiceClient) UpdateTime(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Time, error) {
-	out := new(Time)
-	err := c.cc.Invoke(ctx, "/auction.AuctionService/UpdateTime", in, out, opts...)
+func (c *auctionServiceClient) UpdateTime(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_UpdateTimeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionService_ServiceDesc.Streams[0], "/auction.AuctionService/UpdateTime", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &auctionServiceUpdateTimeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type AuctionService_UpdateTimeClient interface {
+	Recv() (*Time, error)
+	grpc.ClientStream
+}
+
+type auctionServiceUpdateTimeClient struct {
+	grpc.ClientStream
+}
+
+func (x *auctionServiceUpdateTimeClient) Recv() (*Time, error) {
+	m := new(Time)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // AuctionServiceServer is the server API for AuctionService service.
@@ -86,7 +109,7 @@ type AuctionServiceServer interface {
 	GetCurrentInfo(context.Context, *Request) (*Bid, error)
 	Result(context.Context, *Void) (*Bid, error)
 	UpdateHighestBid(context.Context, *Bid) (*Response, error)
-	UpdateTime(context.Context, *Request) (*Time, error)
+	UpdateTime(*Request, AuctionService_UpdateTimeServer) error
 	mustEmbedUnimplementedAuctionServiceServer()
 }
 
@@ -106,8 +129,8 @@ func (UnimplementedAuctionServiceServer) Result(context.Context, *Void) (*Bid, e
 func (UnimplementedAuctionServiceServer) UpdateHighestBid(context.Context, *Bid) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateHighestBid not implemented")
 }
-func (UnimplementedAuctionServiceServer) UpdateTime(context.Context, *Request) (*Time, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateTime not implemented")
+func (UnimplementedAuctionServiceServer) UpdateTime(*Request, AuctionService_UpdateTimeServer) error {
+	return status.Errorf(codes.Unimplemented, "method UpdateTime not implemented")
 }
 func (UnimplementedAuctionServiceServer) mustEmbedUnimplementedAuctionServiceServer() {}
 
@@ -194,22 +217,25 @@ func _AuctionService_UpdateHighestBid_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuctionService_UpdateTime_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
-	if err := dec(in); err != nil {
-		return nil, err
+func _AuctionService_UpdateTime_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Request)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(AuctionServiceServer).UpdateTime(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/auction.AuctionService/UpdateTime",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServiceServer).UpdateTime(ctx, req.(*Request))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(AuctionServiceServer).UpdateTime(m, &auctionServiceUpdateTimeServer{stream})
+}
+
+type AuctionService_UpdateTimeServer interface {
+	Send(*Time) error
+	grpc.ServerStream
+}
+
+type auctionServiceUpdateTimeServer struct {
+	grpc.ServerStream
+}
+
+func (x *auctionServiceUpdateTimeServer) Send(m *Time) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // AuctionService_ServiceDesc is the grpc.ServiceDesc for AuctionService service.
@@ -235,11 +261,13 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "UpdateHighestBid",
 			Handler:    _AuctionService_UpdateHighestBid_Handler,
 		},
+	},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "UpdateTime",
-			Handler:    _AuctionService_UpdateTime_Handler,
+			StreamName:    "UpdateTime",
+			Handler:       _AuctionService_UpdateTime_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "auction/auction.proto",
 }

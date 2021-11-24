@@ -39,6 +39,18 @@ func (ch *ConnectionHolder) GetBidInfo(user string) *BidInfo {
 	return BidInfo
 }
 
+func (ch *ConnectionHolder) BroadcastBid(bidInfo *BidInfo) {
+	ch.Mu.Lock()
+	defer ch.Mu.Unlock()
+
+	for s, _ := range ch.ConnectedClients {
+		if s == bidInfo.User {
+			continue
+		}
+		ch.ConnectedClients[s] = bidInfo
+	}
+}
+
 func (hb *HighestBidHolder) SetBid(Amount int32, User string) bool {
 	hb.Mu.Lock()
 	defer hb.Mu.Unlock()

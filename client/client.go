@@ -92,10 +92,17 @@ func StartClient() {
 }
 
 func ListenForTime() {
-	for {
-		time, err := client.UpdateTime(ctx, &pb.Request{User: user})
+	timeClient, err := client.UpdateTime(ctx, &pb.Request{User: user})
 		if err != nil {
-			log.Print("Could not get Info\n", err)
+			log.Print("Could not get time client\n", err)
+			log.Print("A wild Wormbat appeard\n")
+			connectToServe()
+		}
+
+	for {
+		time, err := timeClient.Recv()
+		if err != nil {
+			log.Print("Could not get time\n", err)
 			log.Print("A wild Wormbat appeard\n")
 			connectToServe()
 		}
