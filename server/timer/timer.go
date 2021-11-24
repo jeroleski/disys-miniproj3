@@ -1,6 +1,7 @@
 package timer
 
 import (
+	"fmt"
 	"time"
 	"sync"
 )
@@ -8,18 +9,16 @@ import (
 type Timer struct {
 	Time      time.Duration
 	Await     time.Duration
-	Read      map[string]bool
+	Read      map[string](chan time.Duration)
 	IsTicking bool
 	Mu        sync.Mutex
 }
 
-func (timer *Timer) Notify() {
+func (timer *Timer) Tick() {
 	for range time.Tick(timer.Await) {
 		timer.Mu.Lock()
 
-		for user := range timer.Read {
-			timer.Read[user] = false
-		}
+		timer.NotifyAll()
 
 		timer.Time -= timer.Await
 
@@ -31,19 +30,35 @@ func (timer *Timer) Notify() {
 	}
 }
 
-func (timer *Timer) GetTime(user string) (time.Duration, bool) {
+func (timer *Timer) NotifyAll() {
+	t := timer.Time
+	for _, c := range timer.Read {
+		go func() {
+			c <- t
+		}()
+	}
+}
+
+func Send(t time.Duration, c chan time.Duration) {
+	fmt.Println("sending time")
+	c <- t
+	fmt.Println("time has been send")
+}
+
+func (timer *Timer) GetChannel(user string) chan time.Duration {
 	timer.Mu.Lock()
 	defer timer.Mu.Unlock()
 
 	if !timer.IsTicking {
 		timer.IsTicking = true
-		go timer.Notify()
+		go timer.Tick()
 	}
 
-	read := timer.Read[user]
-	timer.Read[user] = true
+	if timer.Read[user] == nil {
+		timer.Read[user] = make(chan time.Duration)
+	}
 
-	return timer.Time, read
+	return timer.Read[user]
 }
 
 func (timer *Timer) TimesUp() bool {
