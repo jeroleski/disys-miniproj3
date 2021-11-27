@@ -32,7 +32,7 @@ type AuctionServiceServer struct {
 
 var connections *bid.ConnectionHolder = &bid.ConnectionHolder{ConnectedClients: make(map[string]*bid.BidInfo, 0)}
 var highestBid *bid.HighestBidHolder = &bid.HighestBidHolder{BidInfo: &bid.BidInfo{Amount: 69, User: "SELLER"}}
-var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * time.Duration(currentTime), Await: time.Second * 10, Read: make(map[string]bool), IsTicking: false}
+var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * 10, Await: time.Second * 2, Read: make(map[string](chan time.Duration)), IsTicking: false}
 
 func main() {
 
@@ -119,13 +119,12 @@ func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*p
 }
 
 func (s *AuctionServiceServer) UpdateTime(ctx context.Context, Request *pb.Request) (*pb.Time, error) {
-	for {
-		timeLeft, read := auctionTimer.GetTime(Request.User)
-		if !read {
-			s := strconv.Itoa(int(timeLeft.Seconds()))
-			return &pb.Time{TimeLeft: s}, nil
-		}
+	c := auctionTimer.GetChannel(Request.User)
+	for timeLeft := range c {
+		s := strconv.Itoa(int(timeLeft.Seconds()))
+		return &pb.Time{TimeLeft: s}, nil
 	}
+	return &pb.Time{TimeLeft: "The auction is over!"}, nil
 }
 
 func BroadcastBid(BidInfo *bid.BidInfo) {
