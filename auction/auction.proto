@@ -11,6 +11,7 @@ service AuctionService {
     rpc Result (Void) returns (Bid) {};
     rpc UpdateHighestBid (Bid) returns (Response) {};
     rpc UpdateTime (Request) returns (Time) {};
+    rpc ServerBackup(Backup) returns (Void) {};
 }
 
 message Void {
@@ -31,4 +32,12 @@ message Response {
 
 message Time {
     string TimeLeft = 1;
+}
+
+message Backup{
+    string User = 1;
+    int32 HighestBid = 2;
+    int32 time = 3;
+
+
 }

@@ -96,8 +96,9 @@ func ListenForTime() {
 		time, err := client.UpdateTime(ctx, &pb.Request{User: user})
 		if err != nil {
 			log.Print("Could not get Info\n", err)
-			log.Print("A wild Wormbat appeard\n")
-			connectToServe()
+			log.Print("ListenForTime\n")
+			break
+			//connectToServe()
 		}
 
 		log.Printf("\"%s\" seconds left of the auction!\n", time.TimeLeft)
@@ -109,8 +110,9 @@ func ListenForBids() {
 		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
 		if err != nil {
 			log.Print("Could not get Info\n", err)
-			log.Print("A wild Wormbat appeard\n")
-			connectToServe()
+			log.Print("ListenForBids\n")
+			break
+			//connectToServe()
 
 		}
 
@@ -133,6 +135,7 @@ func ReadBids() {
 		response, err2 := client.MakeBid(ctx, &pb.Bid{Amount: amount, User: user})
 		if err2 != nil {
 			log.Fatalf("Could not make a bid: %v\n", err2)
+			break
 		}
 
 		log.Println(response.Ack)
@@ -143,7 +146,7 @@ func GetResult() {
 	bid, err := client.Result(ctx, &pb.Void{})
 	if err != nil {
 		log.Printf("Could not get Result: %v\n", err)
-		log.Println("A wild Wormbat appeard")
+		log.Println("GetResult")
 		connectToServe()
 	}
 

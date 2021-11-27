@@ -23,6 +23,8 @@ import (
 var serverAddr string
 var serverid int64 = 0
 var currentHighestBid int64 = 0
+var currentUser string
+var currentTime int32 = 60
 
 type AuctionServiceServer struct {
 	pb.UnimplementedAuctionServiceServer
@@ -30,7 +32,7 @@ type AuctionServiceServer struct {
 
 var connections *bid.ConnectionHolder = &bid.ConnectionHolder{ConnectedClients: make(map[string]*bid.BidInfo, 0)}
 var highestBid *bid.HighestBidHolder = &bid.HighestBidHolder{BidInfo: &bid.BidInfo{Amount: 69, User: "SELLER"}}
-var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * 20, Await: time.Second * 10, Read: make(map[string]bool), IsTicking: false}
+var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * time.Duration(currentTime), Await: time.Second * 10, Read: make(map[string]bool), IsTicking: false}
 
 func main() {
 
@@ -43,7 +45,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-
+	serverid = Id
 	//Server listens on the server port and handles error.
 	lis, err1 := net.Listen("tcp", Port((int32(Id))))
 	if err1 != nil {
@@ -91,6 +93,9 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Re
 
 	log.Printf("%s made a bid of $%d", Bid.User, Bid.Amount)
 	BroadcastBid(&bid.BidInfo{Bid.Amount, Bid.User})
+	if serverid == 0 {
+		SendToBackup()
+	}
 
 	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 }
@@ -133,4 +138,16 @@ func BroadcastBid(BidInfo *bid.BidInfo) {
 		}
 		connections.ConnectedClients[s] = BidInfo
 	}
+}
+
+func (s *AuctionServiceServer) ServerBackup(ctx context.Context, Request *pb.Backup) (*pb.Void, error) {
+	currentHighestBid = int64(Request.HighestBid)
+	currentUser = Request.User
+	currentTime = Request.Time
+
+	return &pb.Void{}, nil
+}
+
+func SendToBackup() {
+
 }
