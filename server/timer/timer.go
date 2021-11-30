@@ -89,3 +89,10 @@ func (timer *Timer) TimesUp() bool {
 
 	return timer.Time <= 0
 }
+
+func (timer *Timer) GetTimeLeft() int64 {
+	timer.Mu.Lock()
+	defer timer.Mu.Unlock()
+
+	return int64(timer.Time)
+}

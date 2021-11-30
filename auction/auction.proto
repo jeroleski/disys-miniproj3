@@ -35,9 +35,8 @@ message Time {
 }
 
 message Backup{
-    string User = 1;
-    int32 HighestBid = 2;
-    int32 NewTime = 3;
-
-
+    repeated string ConnectedUsers = 1;
+    int32 HighestBidAmount = 2;
+    string HighestBidUser = 3;
+    int64 TimeLeft = 4;
 }

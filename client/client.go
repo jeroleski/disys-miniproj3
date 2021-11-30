@@ -17,10 +17,13 @@ import (
 
 var client pb.AuctionServiceClient
 var ctx context.Context
-
 var user string
 
 var serverId int32 = 0
+
+var closeReadBids chan bool
+var closeBidStream chan bool
+var closeTimeStream chan bool
 
 func main() {
 	//Sets up logs
@@ -47,7 +50,7 @@ func main() {
 		err := conn.Close()
 		if err != nil {
 			log.Fatalf("connection problem : %v", err)
-			connectToServe()
+			Reconnect()
 		}
 	}(conn)
 
@@ -65,9 +68,10 @@ func main() {
 	StartClient()
 }
 
-func connectToServe() {
+func Reconnect() {
 	log.Print("Reconnecting")
-	conn, err := grpc.Dial(Port(1), grpc.WithInsecure())
+	serverId++
+	conn, err := grpc.Dial(Port(serverId), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -85,20 +89,42 @@ func connectToServe() {
 }
 
 func StartClient() {
-	go ListenForTime()
-	go ListenForBids()
-	go MakeBids()
-	GetResult()
+	closeReadBids = make(chan bool)
+	closeBidStream = make(chan bool)
+	closeTimeStream = make(chan bool)
+
+	go ListenForTime(closeTimeStream)
+	go ListenForBids(closeBidStream)
+	go MakeBids(closeReadBids)
+	over := GetResult()
+
+	go CloseRoutine(closeReadBids)
+	go CloseRoutine(closeBidStream)
+	go CloseRoutine(closeTimeStream)
+
+	if !over {
+		Reconnect()
+	}
 }
 
-func ListenForTime() {
+func CloseRoutine(c chan bool) {
+	c <- true
+}
+
+func ListenForTime(quit chan bool) {
 	timeStream, err := client.GetStreamTimeleft(ctx, &pb.Request{User: user})
-		if err != nil {
-			log.Print("Could not get time client\n", err)
-			return
-		}
+	if err != nil {
+		log.Print("Could not get time client\n", err)
+		return
+	}
 
 	for {
+		select {
+		case <-quit:
+			return
+		default:
+		}
+
 		time, err := timeStream.Recv()
 		if err != nil {
 			break
@@ -108,26 +134,37 @@ func ListenForTime() {
 	}
 }
 
-func ListenForBids() {
+func ListenForBids(quit chan bool) {
 	bidStream, err := client.GetStreamHighestbid(ctx, &pb.Request{User: user})
 	if err != nil {
 		log.Print("Could not get bid client\n", err)
-    return
+		return
 	}
 
 	for {
+		select {
+		case <-quit:
+			return
+		default:
+		}
+
 		bid, err := bidStream.Recv()
 		if err != nil {
-			log.Print("Could not get listen for bids\n", err)
-			return
+			break
 		}
 
 		log.Printf("%s has bid $%d on the auction!\n", bid.User, bid.Amount)
 	}
 }
 
-func MakeBids() {
+func MakeBids(quit chan bool) {
 	for {
+		select {
+		case <-quit:
+			return
+		default:
+		}
+
 		var input string
 		fmt.Scan(&input)
 
@@ -148,11 +185,11 @@ func MakeBids() {
 	}
 }
 
-func GetResult() {
+func GetResult() bool {
 	bid, err := client.Result(ctx, &pb.Void{})
 	if err != nil {
 		log.Printf("Could not get Result: %v\n", err)
-		connectToServe()
+		return false
 	}
 
 	if bid.User == user {
@@ -163,6 +200,8 @@ func GetResult() {
 	if bid.User == "You" {
 		log.Println("Please call in to give us your credit card number!")
 	}
+
+	return true
 }
 
 func Port(ServerId int32) string {
@@ -179,6 +218,6 @@ func Port(ServerId int32) string {
 			Port0 = IdPort[1]
 		}
 	}
-	serverId++
+
 	return Port0
 }

@@ -70,11 +70,22 @@ func (bb *BidinfoBroadcaster) CloseAll() {
 	bb.UserChannels = make(map[string]chan *BidInfo)
 }
 
+func (bb *BidinfoBroadcaster) GetAllUsers() []string {
+	bb.Mu.Lock()
+	defer bb.Mu.Unlock()
+
+	allUsers := make([]string, 0)
+	for user := range bb.UserChannels {
+		allUsers = append(allUsers, user)
+	}
+	return allUsers
+}
+
 func (hb *HighestBidHolder) SetBid(Amount int32, User string) bool {
 	hb.Mu.Lock()
 	defer hb.Mu.Unlock()
 
-	if hb.BidInfo.Amount > Amount {
+	if hb.BidInfo.Amount >= Amount {
 		return false
 	}
 

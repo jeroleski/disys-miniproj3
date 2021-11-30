@@ -23,9 +23,6 @@ import (
 //TODO: all of theese are new
 var serverAddr string
 var serverid int64 = 0
-var currentHighestBid int32 = 0
-var currentUser string
-var currentTime int32 = 300
 
 type AuctionServiceServer struct {
 	pb.UnimplementedAuctionServiceServer
@@ -43,7 +40,6 @@ var auctionTimer *timer.Timer = &timer.Timer{
 	OnClose:      func() { bidBroadcaster.CloseAll() }}
 
 func main() {
-
 	args := os.Args[1:]
 
 	if len(args) < 1 {
@@ -101,12 +97,9 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, bid *pb.Bid) (*pb.Re
 
 	log.Printf("%s made a bid of $%d", bid.User, bid.Amount)
 	bidBroadcaster.BroadcastToAll(&bidUtils.BidInfo{Amount: bid.Amount, User: bid.User})
-	// sender nye bid til backup
-	//todo !!!!
-	if serverid == 0 {
-		SendToBackup(Bid.User, Bid.Amount)
-	}
 
+	go MakeBackup()
+	
 	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 }
 
@@ -140,36 +133,49 @@ func (s *AuctionServiceServer) GetStreamTimeleft(request *pb.Request, timeStream
 	return nil
 }
 
-func (s *AuctionServiceServer) ServerBackup(ctx context.Context, Request *pb.Backup) (*pb.Void, error) {
-	currentHighestBid = Request.HighestBid
-	currentUser = Request.User
-	currentTime = Request.Time
-	//todo !!!!
-	//det er Bid der bliver binary og time er bare fucked
-	log.Printf("Backup message recived Bid : %b. user : %v. time : %c \n", currentHighestBid, currentUser, currentTime)
+func (s *AuctionServiceServer) ServerBackup(ctx context.Context, backup *pb.Backup) (*pb.Void, error) {
+	bid := &bidUtils.BidInfo{Amount: backup.HighestBidAmount, User: backup.HighestBidUser}
+
+	bidBroadcaster = &bidUtils.BidinfoBroadcaster{
+		UserChannels: make(map[string](chan *bidUtils.BidInfo), 0)}
+	highestBid = &bidUtils.HighestBidHolder{
+		BidInfo: bid}
+	auctionTimer = &timer.Timer{
+		Time:         time.Duration(backup.TimeLeft),
+		Await:        time.Second * 10,
+		UserChannels: make(map[string](chan time.Duration)),
+		IsTicking:    false,
+		OnClose:      func() { bidBroadcaster.CloseAll() }}
+
+	for _, user := range backup.ConnectedUsers {
+		bidBroadcaster.AddClient(user, bid)
+		auctionTimer.AddClient(user)
+	}
+
+	log.Printf("Backup message recived Bid: %d - user: %s - time: %d \n", backup.HighestBidAmount, backup.HighestBidUser, backup.TimeLeft)
 
 	return &pb.Void{}, nil
 }
 
-func SendToBackup(user string, amount int32) {
-	//todo !!!!
-	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:8081", grpc.WithInsecure())
+func MakeBackup() {
+	conn, err := grpc.Dial(Port(int32(serverid)+1), grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect to backup: %v", err)
+		log.Printf("Did not connect to backup server: %v\n", err)
+		return
 	}
 	defer conn.Close()
-	log.Print("Conection to backup server Established")
+
 	server2 := pb.NewAuctionServiceClient(conn)
 
 	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	_, err = server2.ServerBackup(ctx, &pb.Backup{User: user, HighestBid: amount, Time: currentTime})
+	bid := highestBid.GetHighestBid()
+	_, err = server2.ServerBackup(ctx, &pb.Backup{ConnectedUsers: bidBroadcaster.GetAllUsers(), HighestBidAmount: bid.Amount, HighestBidUser: bid.User, TimeLeft: auctionTimer.GetTimeLeft()})
 	if err != nil {
-		log.Fatal("could not send backup message: %v", err)
+		log.Println("Could not send backup message")
+		return
 	}
 	log.Print("Backup updatet with new bid, user and current time left")
-
 }

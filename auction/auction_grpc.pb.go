@@ -116,6 +116,15 @@ func (x *auctionServiceGetStreamTimeleftClient) Recv() (*Time, error) {
 	return m, nil
 }
 
+func (c *auctionServiceClient) UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, "/auction.AuctionService/UpdateHighestBid", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *auctionServiceClient) ServerBackup(ctx context.Context, in *Backup, opts ...grpc.CallOption) (*Void, error) {
 	out := new(Void)
 	err := c.cc.Invoke(ctx, "/auction.AuctionService/ServerBackup", in, out, opts...)
@@ -153,6 +162,9 @@ func (UnimplementedAuctionServiceServer) Result(context.Context, *Void) (*Bid, e
 }
 func (UnimplementedAuctionServiceServer) GetStreamTimeleft(*Request, AuctionService_GetStreamTimeleftServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetStreamTimeleft not implemented")
+}
+func (UnimplementedAuctionServiceServer) UpdateHighestBid(context.Context, *Bid) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHighestBid not implemented")
 }
 func (UnimplementedAuctionServiceServer) ServerBackup(context.Context, *Backup) (*Void, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ServerBackup not implemented")
@@ -248,6 +260,24 @@ func (x *auctionServiceGetStreamTimeleftServer) Send(m *Time) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _AuctionService_UpdateHighestBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Bid)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).UpdateHighestBid(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/auction.AuctionService/UpdateHighestBid",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).UpdateHighestBid(ctx, req.(*Bid))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuctionService_ServerBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Backup)
 	if err := dec(in); err != nil {
@@ -281,6 +311,14 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Result",
 			Handler:    _AuctionService_Result_Handler,
 		},
+		{
+			MethodName: "UpdateHighestBid",
+			Handler:    _AuctionService_UpdateHighestBid_Handler,
+		},
+		{
+			MethodName: "ServerBackup",
+			Handler:    _AuctionService_ServerBackup_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -292,10 +330,6 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "GetStreamTimeleft",
 			Handler:       _AuctionService_GetStreamTimeleft_Handler,
 			ServerStreams: true,
-		},
-		{
-			MethodName: "ServerBackup",
-			Handler:    _AuctionService_ServerBackup_Handler,
 		},
 	},
 	Metadata: "auction/auction.proto",
