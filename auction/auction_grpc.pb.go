@@ -22,6 +22,8 @@ type AuctionServiceClient interface {
 	GetStreamHighestbid(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_GetStreamHighestbidClient, error)
 	Result(ctx context.Context, in *Void, opts ...grpc.CallOption) (*Bid, error)
 	GetStreamTimeleft(ctx context.Context, in *Request, opts ...grpc.CallOption) (AuctionService_GetStreamTimeleftClient, error)
+	UpdateHighestBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Response, error)
+	ServerBackup(ctx context.Context, in *Backup, opts ...grpc.CallOption) (*Void, error)
 }
 
 type auctionServiceClient struct {
@@ -114,6 +116,15 @@ func (x *auctionServiceGetStreamTimeleftClient) Recv() (*Time, error) {
 	return m, nil
 }
 
+func (c *auctionServiceClient) ServerBackup(ctx context.Context, in *Backup, opts ...grpc.CallOption) (*Void, error) {
+	out := new(Void)
+	err := c.cc.Invoke(ctx, "/auction.AuctionService/ServerBackup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuctionServiceServer is the server API for AuctionService service.
 // All implementations must embed UnimplementedAuctionServiceServer
 // for forward compatibility
@@ -122,6 +133,8 @@ type AuctionServiceServer interface {
 	GetStreamHighestbid(*Request, AuctionService_GetStreamHighestbidServer) error
 	Result(context.Context, *Void) (*Bid, error)
 	GetStreamTimeleft(*Request, AuctionService_GetStreamTimeleftServer) error
+	UpdateHighestBid(context.Context, *Bid) (*Response, error)
+	ServerBackup(context.Context, *Backup) (*Void, error)
 	mustEmbedUnimplementedAuctionServiceServer()
 }
 
@@ -140,6 +153,9 @@ func (UnimplementedAuctionServiceServer) Result(context.Context, *Void) (*Bid, e
 }
 func (UnimplementedAuctionServiceServer) GetStreamTimeleft(*Request, AuctionService_GetStreamTimeleftServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetStreamTimeleft not implemented")
+}
+func (UnimplementedAuctionServiceServer) ServerBackup(context.Context, *Backup) (*Void, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ServerBackup not implemented")
 }
 func (UnimplementedAuctionServiceServer) mustEmbedUnimplementedAuctionServiceServer() {}
 
@@ -232,6 +248,24 @@ func (x *auctionServiceGetStreamTimeleftServer) Send(m *Time) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _AuctionService_ServerBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Backup)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServiceServer).ServerBackup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/auction.AuctionService/ServerBackup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServiceServer).ServerBackup(ctx, req.(*Backup))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuctionService_ServiceDesc is the grpc.ServiceDesc for AuctionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -258,6 +292,10 @@ var AuctionService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "GetStreamTimeleft",
 			Handler:       _AuctionService_GetStreamTimeleft_Handler,
 			ServerStreams: true,
+		},
+		{
+			MethodName: "ServerBackup",
+			Handler:    _AuctionService_ServerBackup_Handler,
 		},
 	},
 	Metadata: "auction/auction.proto",

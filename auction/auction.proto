@@ -10,6 +10,8 @@ service AuctionService {
     rpc GetStreamHighestbid (Request) returns (stream Bid) {};
     rpc Result (Void) returns (Bid) {};
     rpc GetStreamTimeleft (Request) returns (stream Time) {};
+    rpc UpdateHighestBid (Bid) returns (Response) {};
+    rpc ServerBackup(Backup) returns (Void) {};
 }
 
 message Void {
@@ -30,4 +32,12 @@ message Response {
 
 message Time {
     string Msg = 1;
+}
+
+message Backup{
+    string User = 1;
+    int32 HighestBid = 2;
+    int32 NewTime = 3;
+
+
 }

@@ -95,7 +95,7 @@ func ListenForTime() {
 	timeStream, err := client.GetStreamTimeleft(ctx, &pb.Request{User: user})
 		if err != nil {
 			log.Print("Could not get time client\n", err)
-			connectToServe()
+			return
 		}
 
 	for {
@@ -111,15 +111,15 @@ func ListenForTime() {
 func ListenForBids() {
 	bidStream, err := client.GetStreamHighestbid(ctx, &pb.Request{User: user})
 	if err != nil {
-		log.Print("Could not get Info\n", err)
-		connectToServe()
-
+		log.Print("Could not get bid client\n", err)
+    return
 	}
 
 	for {
 		bid, err := bidStream.Recv()
 		if err != nil {
-			break
+			log.Print("Could not get listen for bids\n", err)
+			return
 		}
 
 		log.Printf("%s has bid $%d on the auction!\n", bid.User, bid.Amount)
@@ -141,6 +141,7 @@ func MakeBids() {
 		response, err2 := client.MakeBid(ctx, &pb.Bid{Amount: amount, User: user})
 		if err2 != nil {
 			log.Fatalf("Could not make a bid: %v\n", err2)
+			break
 		}
 
 		log.Println(response.Ack)
