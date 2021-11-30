@@ -87,40 +87,46 @@ func connectToServe() {
 func StartClient() {
 	go ListenForTime()
 	go ListenForBids()
-	go ReadBids()
+	go MakeBids()
 	GetResult()
 }
 
 func ListenForTime() {
-	for {
-		time, err := client.UpdateTime(ctx, &pb.Request{User: user})
+	timeStream, err := client.GetStreamTimeleft(ctx, &pb.Request{User: user})
 		if err != nil {
-			log.Print("Could not get Info\n", err)
-			log.Print("ListenForTime\n")
-			break
-			//connectToServe()
+			log.Print("Could not get time client\n", err)
+			return
 		}
 
-		log.Printf("\"%s\" seconds left of the auction!\n", time.TimeLeft)
+	for {
+		time, err := timeStream.Recv()
+		if err != nil {
+			break
+		}
+
+		log.Println(time.Msg)
 	}
 }
 
 func ListenForBids() {
-	for {
-		currentHighestBid, err := client.GetCurrentInfo(ctx, &pb.Request{User: user})
-		if err != nil {
-			log.Print("Could not get Info\n", err)
-			log.Print("ListenForBids\n")
-			break
-			//connectToServe()
+	bidStream, err := client.GetStreamHighestbid(ctx, &pb.Request{User: user})
+	if err != nil {
+		log.Print("Could not get bid client\n", err)
+    return
+	}
 
+	for {
+		bid, err := bidStream.Recv()
+		if err != nil {
+			log.Print("Could not get listen for bids\n", err)
+			return
 		}
 
-		log.Printf("%s has bid $%d on the auction!\n", currentHighestBid.User, currentHighestBid.Amount)
+		log.Printf("%s has bid $%d on the auction!\n", bid.User, bid.Amount)
 	}
 }
 
-func ReadBids() {
+func MakeBids() {
 	for {
 		var input string
 		fmt.Scan(&input)
@@ -146,7 +152,6 @@ func GetResult() {
 	bid, err := client.Result(ctx, &pb.Void{})
 	if err != nil {
 		log.Printf("Could not get Result: %v\n", err)
-		log.Println("GetResult")
 		connectToServe()
 	}
 
@@ -176,5 +181,4 @@ func Port(ServerId int32) string {
 	}
 	serverId++
 	return Port0
-
 }

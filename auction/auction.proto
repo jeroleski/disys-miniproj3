@@ -7,10 +7,10 @@ package auction;
 
 service AuctionService {
     rpc MakeBid (Bid) returns (Response) {};
-    rpc GetCurrentInfo (Request) returns (Bid) {};
+    rpc GetStreamHighestbid (Request) returns (stream Bid) {};
     rpc Result (Void) returns (Bid) {};
+    rpc GetStreamTimeleft (Request) returns (stream Time) {};
     rpc UpdateHighestBid (Bid) returns (Response) {};
-    rpc UpdateTime (Request) returns (Time) {};
     rpc ServerBackup(Backup) returns (Void) {};
 }
 
@@ -31,7 +31,7 @@ message Response {
 }
 
 message Time {
-    string TimeLeft = 1;
+    string Msg = 1;
 }
 
 message Backup{

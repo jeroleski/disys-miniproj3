@@ -16,10 +16,11 @@ import (
 	"bufio"
 	"log"
 
-	bid "example/disys-miniproj3/server/bid"
+	bidUtils "example/disys-miniproj3/server/bidUtils"
 	timer "example/disys-miniproj3/server/timer"
 )
 
+//TODO: all of theese are new
 var serverAddr string
 var serverid int64 = 0
 var currentHighestBid int32 = 0
@@ -30,9 +31,16 @@ type AuctionServiceServer struct {
 	pb.UnimplementedAuctionServiceServer
 }
 
-var connections *bid.ConnectionHolder = &bid.ConnectionHolder{ConnectedClients: make(map[string]*bid.BidInfo, 0)}
-var highestBid *bid.HighestBidHolder = &bid.HighestBidHolder{BidInfo: &bid.BidInfo{Amount: 69, User: "SELLER"}}
-var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * time.Duration(currentTime), Await: time.Second * 2, Read: make(map[string](chan time.Duration)), IsTicking: false}
+var bidBroadcaster *bidUtils.BidinfoBroadcaster = &bidUtils.BidinfoBroadcaster{
+	UserChannels: make(map[string](chan *bidUtils.BidInfo), 0)}
+var highestBid *bidUtils.HighestBidHolder = &bidUtils.HighestBidHolder{
+	BidInfo: &bidUtils.BidInfo{Amount: 69, User: "SELLER"}}
+var auctionTimer *timer.Timer = &timer.Timer{
+	Time:         time.Second * 120,
+	Await:        time.Second * 10,
+	UserChannels: make(map[string](chan time.Duration)),
+	IsTicking:    false,
+	OnClose:      func() { bidBroadcaster.CloseAll() }}
 
 func main() {
 
@@ -84,15 +92,15 @@ func Port(ServerId int32) string {
 
 }
 
-func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Response, error) {
-	connections.AddClient(Bid.User, highestBid.GetHighestBid())
-	success := highestBid.SetBid(Bid.Amount, Bid.User)
+func (s *AuctionServiceServer) MakeBid(ctx context.Context, bid *pb.Bid) (*pb.Response, error) {
+	bidBroadcaster.AddClient(bid.User, highestBid.GetHighestBid())
+	success := highestBid.SetBid(bid.Amount, bid.User)
 	if !success {
 		return &pb.Response{Ack: "You must make a minimal bid higher than $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 	}
 
-	log.Printf("%s made a bid of $%d", Bid.User, Bid.Amount)
-	BroadcastBid(&bid.BidInfo{Bid.Amount, Bid.User})
+	log.Printf("%s made a bid of $%d", bid.User, bid.Amount)
+	bidBroadcaster.BroadcastToAll(&bidUtils.BidInfo{Amount: bid.Amount, User: bid.User})
 	// sender nye bid til backup
 	//todo !!!!
 	if serverid == 0 {
@@ -102,16 +110,16 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, Bid *pb.Bid) (*pb.Re
 	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 }
 
-func (s *AuctionServiceServer) GetCurrentInfo(ctx context.Context, Request *pb.Request) (*pb.Bid, error) {
-	for {
-		BidInfo := connections.GetBidInfo(Request.User)
-		if BidInfo != nil {
-			return &pb.Bid{Amount: BidInfo.Amount, User: BidInfo.User}, nil
-		}
+func (s *AuctionServiceServer) GetStreamHighestbid(request *pb.Request, bidStream pb.AuctionService_GetStreamHighestbidServer) error {
+	bidBroadcaster.AddClient(request.User, highestBid.GetHighestBid())
+	c := bidBroadcaster.GetChannel(request.User)
+	for bid := range c {
+		bidStream.Send(&pb.Bid{Amount: bid.Amount, User: bid.User})
 	}
+	return nil
 }
 
-func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*pb.Bid, error) {
+func (s *AuctionServiceServer) Result(ctx context.Context, void *pb.Void) (*pb.Bid, error) {
 	for {
 		if auctionTimer.TimesUp() {
 			bid := highestBid.GetHighestBid()
@@ -120,26 +128,16 @@ func (s *AuctionServiceServer) Result(ctx context.Context, Request *pb.Void) (*p
 	}
 }
 
-func (s *AuctionServiceServer) UpdateTime(ctx context.Context, Request *pb.Request) (*pb.Time, error) {
-	c := auctionTimer.GetChannel(Request.User)
+func (s *AuctionServiceServer) GetStreamTimeleft(request *pb.Request, timeStream pb.AuctionService_GetStreamTimeleftServer) error {
+	auctionTimer.AddClient(request.User)
+	c := auctionTimer.GetChannel(request.User)
 	for timeLeft := range c {
 		time.Sleep(10 * time.Second)
 		s := strconv.Itoa(int(timeLeft.Seconds()))
-		return &pb.Time{TimeLeft: s}, nil
+		time := &pb.Time{Msg: s + " seconds left of the auction!"}
+		timeStream.Send(time)
 	}
-	return &pb.Time{TimeLeft: "The auction is over!"}, nil
-}
-
-func BroadcastBid(BidInfo *bid.BidInfo) {
-	connections.Mu.Lock()
-	defer connections.Mu.Unlock()
-
-	for s, _ := range connections.ConnectedClients {
-		if s == BidInfo.User {
-			continue
-		}
-		connections.ConnectedClients[s] = BidInfo
-	}
+	return nil
 }
 
 func (s *AuctionServiceServer) ServerBackup(ctx context.Context, Request *pb.Backup) (*pb.Void, error) {
