@@ -20,7 +20,6 @@ import (
 	timer "example/disys-miniproj3/server/timer"
 )
 
-//TODO: all of theese are new
 var serverAddr string
 var serverid int64 = 0
 
@@ -38,6 +37,12 @@ var auctionTimer *timer.Timer = &timer.Timer{
 	UserChannels: make(map[string](chan time.Duration)),
 	IsTicking:    false,
 	OnClose:      func() { bidBroadcaster.CloseAll() }}
+
+func init() {
+	auctionTimer.OnTick = func() { 
+		go MakeBackup()
+	}
+}
 
 func main() {
 	args := os.Args[1:]
@@ -99,7 +104,7 @@ func (s *AuctionServiceServer) MakeBid(ctx context.Context, bid *pb.Bid) (*pb.Re
 	bidBroadcaster.BroadcastToAll(&bidUtils.BidInfo{Amount: bid.Amount, User: bid.User})
 
 	go MakeBackup()
-	
+
 	return &pb.Response{Ack: "You have made a bid of $" + strconv.FormatInt(int64(highestBid.GetHighestBid().Amount), 10)}, nil
 }
 
@@ -145,6 +150,7 @@ func (s *AuctionServiceServer) ServerBackup(ctx context.Context, backup *pb.Back
 		Await:        time.Second * 10,
 		UserChannels: make(map[string](chan time.Duration)),
 		IsTicking:    false,
+		OnTick:       func() { go MakeBackup() },
 		OnClose:      func() { bidBroadcaster.CloseAll() }}
 
 	for _, user := range backup.ConnectedUsers {

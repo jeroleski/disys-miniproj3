@@ -11,6 +11,7 @@ type Timer struct {
 	UserChannels map[string]chan time.Duration
 	IsTicking    bool
 	Mu           sync.Mutex
+	OnTick       func()
 	OnClose      func()
 }
 
@@ -21,6 +22,8 @@ func (timer *Timer) Tick() {
 		}
 
 		timer.NotifyAll()
+
+		go timer.OnTick()
 
 		timer.Mu.Lock()
 		timer.Time -= timer.Await
