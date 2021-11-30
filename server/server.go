@@ -32,7 +32,7 @@ type AuctionServiceServer struct {
 
 var connections *bid.ConnectionHolder = &bid.ConnectionHolder{ConnectedClients: make(map[string]*bid.BidInfo, 0)}
 var highestBid *bid.HighestBidHolder = &bid.HighestBidHolder{BidInfo: &bid.BidInfo{Amount: 69, User: "SELLER"}}
-var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * 10, Await: time.Second * 2, Read: make(map[string](chan time.Duration)), IsTicking: false}
+var auctionTimer *timer.Timer = &timer.Timer{Time: time.Second * time.Duration(currentTime), Await: time.Second * 2, Read: make(map[string](chan time.Duration)), IsTicking: false}
 
 func main() {
 
