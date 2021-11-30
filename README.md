@@ -1,6 +1,32 @@
 ### Distributed Systems 2021 -- Miniproject 3
 Hand-in Date: 1 December 2021 (at 23:59)
 
+# How to run 
+## Servers
+  First you need to set up the primary and the backup servers. This can be done by running the following commands from the root folder.
+
+  ```golang
+  // primary
+  go run server/server.go 0
+
+// backup
+  go run server/server.go 1
+  ```
+## Clintes
+  Once both server are up you can begin to connect clintes. 
+  Each client can be createde with the following command.
+  after the command has be run u will need to write a user name before being able to bid
+  ```golang
+  go run client/client.go
+  ```
+## Testing failure
+  The programe is made to survive the shutdown of the primary server this can be done by CTRL+C in the terminal of the primary server.
+  After clintes discover the primary server is down they will automatically recornect to the backup server wich will preced to host the auction
+
+
+
+
+
 # What to submit on learnit:
 - a **single** zip-compressed file containing: a folder src containing
 the source code. You are only allowed to submit source code files in
