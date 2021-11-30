@@ -2,7 +2,7 @@
 Hand-in Date: 1 December 2021 (at 23:59)
 
 # How to run 
-##Servers
+## Servers
   First you need to set up the primary and the backup servers. This can be done by running the following commands from the root folder.
 
   ```golang
@@ -12,16 +12,16 @@ Hand-in Date: 1 December 2021 (at 23:59)
 // backup
   go run server/server.go 1
   ```
-##Clintes
+## Clintes
   Once both server are up you can begin to connect clintes. 
   Each client can be createde with the following command.
   after the command has be run u will need to write a user name before being able to bid
   ```golang
   go run client/client.go
   ```
-##Testing failure
+## Testing failure
   The programe is made to survive the shutdown of the primary server this can be done by CTRL+C in the terminal of the primary server.
-  After clintes discover 
+  After clintes discover the primary server is down they will automatically recornect to the backup server wich will preced to host the auction
 
 
 
