@@ -17,6 +17,10 @@ type Timer struct {
 
 func (timer *Timer) Tick() {
 	for range time.Tick(timer.Await) {
+		timer.Mu.Lock()
+		timer.Time -= timer.Await
+		timer.Mu.Unlock()
+
 		if timer.TimesUp() {
 			break
 		}
@@ -24,10 +28,6 @@ func (timer *Timer) Tick() {
 		timer.NotifyAll()
 
 		go timer.OnTick()
-
-		timer.Mu.Lock()
-		timer.Time -= timer.Await
-		timer.Mu.Unlock()
 	}
 	timer.CloseAll()
 	timer.OnClose()
@@ -68,6 +68,7 @@ func (timer *Timer) AddClient(user string) bool {
 
 	if timer.UserChannels[user] == nil {
 		timer.UserChannels[user] = make(chan time.Duration)
+		go Notify(timer.UserChannels[user], timer.Time)
 		return true
 	}
 
