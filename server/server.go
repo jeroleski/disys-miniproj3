@@ -29,7 +29,8 @@ var bidBroadcaster *bidUtils.BidinfoBroadcaster = &bidUtils.BidinfoBroadcaster{
 var highestBid *bidUtils.HighestBidHolder = &bidUtils.HighestBidHolder{
 	BidInfo: &bidUtils.BidInfo{Amount: 69, User: "SELLER"}}
 var auctionTimer *timer.Timer = &timer.Timer{
-	Time: time.Second * 10, Await: time.Second * 2,
+	Time:         time.Second * 120,
+	Await:        time.Second * 10,
 	UserChannels: make(map[string](chan time.Duration)),
 	IsTicking:    false,
 	OnClose:      func() { bidBroadcaster.CloseAll() }}

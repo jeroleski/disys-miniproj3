@@ -69,7 +69,6 @@ func (timer *Timer) AddClient(user string) bool {
 	}
 
 	return false
-
 }
 
 func (timer *Timer) GetChannel(user string) chan time.Duration {
