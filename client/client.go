@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	pb "example/disys-miniproj3/auction"
-	"fmt"
 	"time"
 
 	"google.golang.org/grpc"
 
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -40,8 +40,8 @@ func main() {
 			log.Fatalf("File not found: %v\n", err)
 		}
 	}(logFile)
+	log.SetOutput(logFile)
 
-	//log.SetOutput(logFile)
 	conn, err := grpc.Dial(Port(serverId), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -60,7 +60,7 @@ func main() {
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	log.Println("Please write your user name:")
+	fmt.Println("Please write your user name:")
 
 	fmt.Scan(&user)
 	log.Printf("User %s has connected to the auction\n", user)
@@ -165,6 +165,7 @@ func MakeBids(quit chan bool) {
 		default:
 		}
 
+		fmt.Println("Make a bid:")
 		var input string
 		fmt.Scan(&input)
 

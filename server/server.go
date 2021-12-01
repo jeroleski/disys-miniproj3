@@ -47,8 +47,24 @@ func init() {
 }
 
 func main() {
-	args := os.Args[1:]
+	//Sets up logs
+	//Setup the file for log outputs
+	LogFile := "./systemlogs/server.log"
+	// open log file
+	logFile, err := os.OpenFile(LogFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer func(logFile *os.File) {
+		err := logFile.Close()
+		if err != nil {
+			log.Fatalf("File not found: %v\n", err)
+		}
+	}(logFile)
 
+	log.SetOutput(logFile)
+
+	args := os.Args[1:]
 	if len(args) < 1 {
 		os.Exit(1)
 	}
@@ -70,9 +86,6 @@ func main() {
 
 	//Connect the port we're listening on with the newly created server.
 	if err := server.Serve(lis); err != nil {
-		//peer := setupNewPeerNode()
-		//peers = append(peers, peer)
-
 		log.Fatalf("Failed to serve: %v", err)
 	}
 }

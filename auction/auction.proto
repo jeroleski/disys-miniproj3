@@ -10,7 +10,6 @@ service AuctionService {
     rpc GetStreamHighestbid (Request) returns (stream Bid) {};
     rpc Result (Void) returns (Bid) {};
     rpc GetStreamTimeleft (Request) returns (stream Time) {};
-    rpc UpdateHighestBid (Bid) returns (Response) {};
     rpc ServerBackup(Backup) returns (Void) {};
 }
 
