@@ -4,6 +4,7 @@ Hand-in Date: 1 December 2021 (at 23:59)
 # How to run 
 ## Servers
   First you need to set up the primary and the backup servers. This can be done by running the following commands from the root folder.
+  once they print "Server listening at 127.0.0.1:8081" or simelar in the teminal they are running
 
   ```golang
   // primary
