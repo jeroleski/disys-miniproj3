@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	pb "example/disys-miniproj3/auction"
+	"fmt"
 	"net"
 
 	"google.golang.org/grpc"
@@ -83,6 +84,7 @@ func main() {
 	server := grpc.NewServer()
 	pb.RegisterAuctionServiceServer(server, &AuctionServiceServer{})
 	log.Printf("Server listening at %v\n", lis.Addr())
+	fmt.Printf("Server listening at %v\n", lis.Addr())
 
 	//Connect the port we're listening on with the newly created server.
 	if err := server.Serve(lis); err != nil {
@@ -181,24 +183,26 @@ func (s *AuctionServiceServer) ServerBackup(ctx context.Context, backup *pb.Back
 }
 
 func MakeBackup() {
-	conn, err := grpc.Dial(Port(int32(serverid)+1), grpc.WithInsecure())
-	if err != nil {
-		log.Printf("Did not connect to backup server: %v\n", err)
-		return
+	if serverid == 0 {
+		conn, err := grpc.Dial(Port(int32(serverid)+1), grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Did not connect to backup server: %v\n", err)
+			return
+		}
+		defer conn.Close()
+
+		server2 := pb.NewAuctionServiceClient(conn)
+
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		bid := highestBid.GetHighestBid()
+		_, err = server2.ServerBackup(ctx, &pb.Backup{ConnectedUsers: bidBroadcaster.GetAllUsers(), HighestBidAmount: bid.Amount, HighestBidUser: bid.User, TimeLeft: auctionTimer.GetTimeLeft()})
+		if err != nil {
+			log.Println("Could not send backup message")
+			return
+		}
+		log.Print("Backup updatet with new bid, user and current time left")
 	}
-	defer conn.Close()
-
-	server2 := pb.NewAuctionServiceClient(conn)
-
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	bid := highestBid.GetHighestBid()
-	_, err = server2.ServerBackup(ctx, &pb.Backup{ConnectedUsers: bidBroadcaster.GetAllUsers(), HighestBidAmount: bid.Amount, HighestBidUser: bid.User, TimeLeft: auctionTimer.GetTimeLeft()})
-	if err != nil {
-		log.Println("Could not send backup message")
-		return
-	}
-	log.Print("Backup updatet with new bid, user and current time left")
 }

@@ -64,6 +64,7 @@ func main() {
 
 	fmt.Scan(&user)
 	log.Printf("User %s has connected to the auction\n", user)
+	fmt.Printf("Welcome to the auction %s \n", user)
 
 	StartClient()
 }
@@ -154,6 +155,7 @@ func ListenForBids(quit chan bool) {
 		}
 
 		log.Printf("%s has bid $%d on the auction!\n", bid.User, bid.Amount)
+		fmt.Printf("%s has bid $%d on the auction!\n", bid.User, bid.Amount)
 	}
 }
 
@@ -182,7 +184,7 @@ func MakeBids(quit chan bool) {
 			break
 		}
 
-		log.Println(response.Ack)
+		fmt.Println(response.Ack)
 	}
 }
 
@@ -198,8 +200,10 @@ func GetResult() bool {
 	}
 
 	log.Printf("%s have bought \"SULFURAS, HAND OF RAGNAROS\" for $%v\n", bid.User, bid.Amount)
+	fmt.Printf("%s have bought \"SULFURAS, HAND OF RAGNAROS\" for $%v\n", bid.User, bid.Amount)
 	if bid.User == "You" {
 		log.Println("Please call in to give us your credit card number!")
+		fmt.Println("Please call in to give us your credit card number!")
 	}
 
 	return true
