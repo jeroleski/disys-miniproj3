@@ -21,13 +21,12 @@ func (timer *Timer) Tick() {
 		timer.Time -= timer.Await
 		timer.Mu.Unlock()
 
+		timer.NotifyAll()
+		go timer.OnTick()
+
 		if timer.TimesUp() {
 			break
 		}
-
-		timer.NotifyAll()
-
-		go timer.OnTick()
 	}
 	timer.CloseAll()
 	timer.OnClose()
@@ -91,7 +90,7 @@ func (timer *Timer) TimesUp() bool {
 	timer.Mu.Lock()
 	defer timer.Mu.Unlock()
 
-	return timer.Time <= 0
+	return timer.Time < 0
 }
 
 func (timer *Timer) GetTimeLeft() int64 {

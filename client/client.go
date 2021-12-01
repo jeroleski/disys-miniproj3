@@ -69,7 +69,7 @@ func main() {
 }
 
 func Reconnect() {
-	log.Print("Reconnecting")
+	log.Print("Reconnecting...")
 	serverId++
 	conn, err := grpc.Dial(Port(serverId), grpc.WithInsecure())
 	if err != nil {
@@ -188,7 +188,7 @@ func MakeBids(quit chan bool) {
 func GetResult() bool {
 	bid, err := client.Result(ctx, &pb.Void{})
 	if err != nil {
-		log.Printf("Could not get Result: %v\n", err)
+		log.Print("Connection lost!")
 		return false
 	}
 

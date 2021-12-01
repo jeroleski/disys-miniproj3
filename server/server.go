@@ -15,6 +15,7 @@ import (
 
 	"bufio"
 	"log"
+	"sync"
 
 	bidUtils "example/disys-miniproj3/server/bidUtils"
 	timer "example/disys-miniproj3/server/timer"
@@ -37,9 +38,10 @@ var auctionTimer *timer.Timer = &timer.Timer{
 	UserChannels: make(map[string](chan time.Duration)),
 	IsTicking:    false,
 	OnClose:      func() { bidBroadcaster.CloseAll() }}
+var mu sync.Mutex
 
 func init() {
-	auctionTimer.OnTick = func() { 
+	auctionTimer.OnTick = func() {
 		go MakeBackup()
 	}
 }
@@ -139,6 +141,8 @@ func (s *AuctionServiceServer) GetStreamTimeleft(request *pb.Request, timeStream
 }
 
 func (s *AuctionServiceServer) ServerBackup(ctx context.Context, backup *pb.Backup) (*pb.Void, error) {
+	mu.Lock()
+	defer mu.Unlock()
 	bid := &bidUtils.BidInfo{Amount: backup.HighestBidAmount, User: backup.HighestBidUser}
 
 	bidBroadcaster = &bidUtils.BidinfoBroadcaster{
