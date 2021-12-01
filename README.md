@@ -4,8 +4,6 @@ Hand-in Date: 1 December 2021 (at 23:59)
 # How to run 
 ## Servers
   First you need to set up the primary and the backup servers. This can be done by running the following commands from the root folder.
-  once they print "Server listening at 127.0.0.1:8081" or simelar in the teminal they are running
-
   ```golang
   // primary
   go run server/server.go 0
@@ -13,18 +11,23 @@ Hand-in Date: 1 December 2021 (at 23:59)
 // backup
   go run server/server.go 1
   ```
+  Once they print "Server listening at 127.0.0.1:8080" or similar in the teminal they are running
+  Further backup servers can be started by increasing the argument by 1.
+
 ## Clintes
-  Once both server are up you can begin to connect clintes. 
+  Once a primary server are up you can begin to connect clintes. 
   Each client can be createde with the following command.
-  after the command has be run u will need to write a user name before being able to bid
   ```golang
   go run client/client.go
   ```
+  After the command has be run u will need to write a user name before being able to bid
+
 ## Testing failure
-  The programe is made to survive the shutdown of the primary server this can be done by CTRL+C in the terminal of the primary server.
-  After clintes discover the primary server is down they will automatically recornect to the backup server wich will preced to host the auction
+  The programe is made to survive the shutdown of the current primary server this can be done by Ctrl + C in the terminal of the primary server.
+  After clintes discover the primary server is down they will automatically recornect to the backup server wich will preced to host the auction and act as the new primary server.
 
-
+  It is important that all new servers are started with their arguments in increasing order without skipping.
+  Also a backup server must be running before shutting down the primary server.
 
 
 
